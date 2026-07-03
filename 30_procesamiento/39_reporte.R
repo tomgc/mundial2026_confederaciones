@@ -3,7 +3,8 @@
 # Proposito: emitir datos_interfaz.json consumido por index.html (fetch),
 #   cumpliendo el shape exacto del contrato (meta, confederaciones[], equipos[].historial[]).
 # Insumos: 20_insumos/equipos_mundial2026.csv, ranking_fifa_20260611.csv, elo_20260702.csv;
-#   40_salidas/rating_equipos.csv, rating_confederaciones.csv, historial_partidos.csv
+#   40_salidas/rating_equipos.csv, rating_confederaciones.csv,
+#   rating_confederaciones_compuesto.csv, historial_partidos.csv, fuerza_equipos.csv
 # Salidas: 40_salidas/datos_interfaz.json
 # Autor: pipeline mundial2026_confederaciones
 # Fecha: 2026-07-02
@@ -24,7 +25,9 @@ ruta_maestro   <- here::here("20_insumos", "equipos_mundial2026.csv")
 ruta_fifa      <- here::here("20_insumos", "ranking_fifa_20260611.csv")
 ruta_elo       <- here::here("20_insumos", "elo_20260702.csv")
 ruta_rating    <- here::here("40_salidas", "rating_equipos.csv")
+ruta_fuerza    <- here::here("40_salidas", "fuerza_equipos.csv")
 ruta_conf      <- here::here("40_salidas", "rating_confederaciones.csv")
+ruta_conf_comp <- here::here("40_salidas", "rating_confederaciones_compuesto.csv")
 ruta_historial <- here::here("40_salidas", "historial_partidos.csv")
 ruta_salida    <- here::here("40_salidas", "datos_interfaz.json")
 
@@ -32,7 +35,9 @@ ruta_salida    <- here::here("40_salidas", "datos_interfaz.json")
 FECHA_ACTUALIZACION <- "2026-07-02"
 NOMBRE_TORNEO <- "Mundial 2026"
 SEDE_DEFAULT <- "neutral"  # sin insumo de sede en el pipeline actual
-FUENTE_FUERZA_ACTUAL <- "fifa"  # debe coincidir con 31_ingesta_fuerza.R al momento de esta corrida
+# P8: fuente_fuerza ya no se redeclara aqui; se lee de fuerza_equipos.csv
+# (unica fuente de verdad, escrita por 31_ingesta_fuerza.R), eliminando el
+# riesgo de desincronizacion entre dos constantes en dos scripts.
 
 # ---- Funciones ----
 
@@ -55,7 +60,16 @@ fifa      <- read_csv(ruta_fifa, col_types = cols(codigo_fifa = col_character(),
 elo       <- read_csv(ruta_elo, col_types = cols(codigo_fifa = col_character(), .default = col_guess()))
 rating    <- read_csv(ruta_rating, col_types = cols(codigo_fifa = col_character(), .default = col_guess()))
 conf      <- read_csv(ruta_conf, col_types = cols(.default = col_guess()))
+conf_comp <- read_csv(ruta_conf_comp, col_types = cols(.default = col_guess()))
 historial <- read_csv(ruta_historial, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
+fuerza    <- read_csv(ruta_fuerza, col_types = cols(codigo_fifa = col_character(), fuente_fuerza = col_character(), .default = col_guess()))
+
+# P8: fuente_fuerza leida de fuerza_equipos.csv (unica fuente de verdad).
+# La columna debe ser constante en las 48 filas (misma corrida de 31);
+# si no lo es, el insumo esta corrupto y se detiene antes de publicar.
+stopifnot("fuente_fuerza debe ser un valor unico en fuerza_equipos.csv" =
+            dplyr::n_distinct(fuerza$fuente_fuerza) == 1)
+FUENTE_FUERZA_ACTUAL <- fuerza$fuente_fuerza[1]
 
 # 2. Validacion de integridad (C.8)
 stopifnot(
@@ -63,7 +77,8 @@ stopifnot(
   "fifa debe tener 48 equipos" = nrow(fifa) == 48,
   "elo debe tener 48 equipos" = nrow(elo) == 48,
   "rating debe tener 48 equipos" = nrow(rating) == 48,
-  "conf debe tener 6 confederaciones" = nrow(conf) == 6
+  "conf debe tener 6 confederaciones" = nrow(conf) == 6,
+  "conf_comp debe tener 6 confederaciones" = nrow(conf_comp) == 6
 )
 if (anyNA(rating$rating_actual)) warning("NAs detectados en rating_actual")
 
@@ -91,7 +106,12 @@ equipos_base <- rating |>
     rank_actual = rank_actual,
     delta = r1(delta_rating)
   )
-stopifnot("nombre no debe tener NA tras el join" = !anyNA(equipos_base$nombre))
+stopifnot(
+  "nombre no debe tener NA tras el join" = !anyNA(equipos_base$nombre),
+  "pos_fifa no debe tener NA tras el join" = !anyNA(equipos_base$pos_fifa),
+  "puntos_fifa no debe tener NA tras el join" = !anyNA(equipos_base$puntos_fifa),
+  "elo no debe tener NA tras el join" = !anyNA(equipos_base$elo)
+)
 
 # 5. Historial por equipo, con rival_nombre/rival_confederacion resueltos por join contra el maestro.
 mapa_rival <- maestro_enriquecido |> select(codigo_fifa, equipo_es, confederacion)
@@ -160,6 +180,19 @@ confederaciones_json <- conf |>
   ) |>
   purrr::transpose()
 
+# Mismo shape, bajo fuerza_base_compuesto (toggle FIFA/Compuesto del sitio).
+confederaciones_compuesto_json <- conf_comp |>
+  transmute(
+    id = confederacion,
+    rating_inicial = r1(rating_inicial),
+    rating_actual = r1(rating_actual),
+    delta = r1(delta),
+    obs_vs_esp = r1(obs_vs_esp),
+    transfer_neto = r1(transfer_neto),
+    n_equipos = n_equipos
+  ) |>
+  purrr::transpose()
+
 # 7. Ensamblaje final segun contrato (index.html linea 541 en adelante)
 salida <- list(
   meta = list(
@@ -168,13 +201,15 @@ salida <- list(
     fuente_fuerza = FUENTE_FUERZA_ACTUAL
   ),
   confederaciones = confederaciones_json,
+  confederaciones_compuesto = confederaciones_compuesto_json,
   equipos = equipos_json
 )
 
 # 8. Validacion final de shape antes de escribir
 stopifnot(
   "equipos debe tener 48 elementos" = length(salida$equipos) == 48,
-  "confederaciones debe tener 6 elementos" = length(salida$confederaciones) == 6
+  "confederaciones debe tener 6 elementos" = length(salida$confederaciones) == 6,
+  "confederaciones_compuesto debe tener 6 elementos" = length(salida$confederaciones_compuesto) == 6
 )
 
 # 9. Escritura atomica

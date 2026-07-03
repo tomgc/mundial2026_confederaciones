@@ -125,7 +125,16 @@ tabla <- tabla |>
       FUENTE_FUERZA == "compuesto" ~ PESO_COMPUESTO[["fifa"]] * fuerza_fifa +
                                      PESO_COMPUESTO[["elo"]]  * fuerza_elo,
       TRUE ~ NA_real_
-    )
+    ),
+    # Toggle FIFA/Compuesto en el sitio: se calcula siempre, sin importar
+    # FUENTE_FUERZA activa, para que 33_motor_elo.R pueda resimular
+    # confederaciones bajo ambos criterios.
+    fuerza_base_compuesto = PESO_COMPUESTO[["fifa"]] * fuerza_fifa +
+                             PESO_COMPUESTO[["elo"]]  * fuerza_elo,
+    # P8: fuente_fuerza persistida en la salida (fuente unica de verdad).
+    # 39_reporte.R la lee de aqui en vez de redeclarar una constante propia,
+    # eliminando el riesgo de desincronizacion entre dos scripts.
+    fuente_fuerza = FUENTE_FUERZA
   )
 
 # 6. Validacion de integridad (politica C.8)
