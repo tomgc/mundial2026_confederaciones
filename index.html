@@ -146,6 +146,13 @@
   .card-conf .stat-v{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
   .card-conf .stat-nota{font-size:11px; color:var(--muted); margin-top:2px}
 
+  .pd-wrap{margin-top:14px; padding-top:12px; border-top:1px solid var(--line)}
+  .pd-titulo{font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--muted); margin-bottom:8px; text-transform:uppercase}
+  .pd-lista{list-style:none; margin:0 0 6px; padding:0}
+  .pd-lista li{font-size:12px; color:var(--ink); line-height:1.5; padding:3px 0; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap}
+  .pd-fase{color:var(--muted); font-size:11px}
+  .pd-lista .signo{margin-left:auto; font-size:12px; white-space:nowrap}
+
   /* ---- Gráfico de barras divergente + panel metodológico ---- */
   .card-barras{margin-top:22px; border:1px solid var(--line); background:var(--paper); padding:20px}
   .card-barras-cab{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
@@ -160,6 +167,27 @@
   .panel-metodo p{margin:0 0 8px; color:var(--muted)}
   .panel-metodo p:last-child{margin-bottom:0}
   @media (max-width:720px){ .barras-layout{grid-template-columns:1fr} }
+
+  /* ---- Banner colapsable: metodología argumentativa (reemplaza footer) ---- */
+  .banner-metodo{border-top:2px solid var(--header); background:var(--paper); margin-top:32px}
+  .banner-metodo summary{cursor:pointer; padding:16px 24px; font-size:13px; font-weight:700; color:var(--ink); list-style:none; display:flex; align-items:center; justify-content:flex-start; gap:12px}
+  .banner-metodo summary::-webkit-details-marker{display:none}
+  .banner-metodo-titulo{flex:0 1 auto}
+  .banner-metodo summary .ind{flex-shrink:0; width:26px; height:26px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--header); transition:transform .18s, background .15s}
+  .banner-metodo[open] summary .ind{transform:rotate(180deg); background:var(--header); color:#fff; border-color:var(--header)}
+  .banner-metodo summary:hover .ind{border-color:var(--header)}
+  .banner-metodo summary:hover{background:var(--bg)}
+  .banner-metodo-cuerpo{padding:4px 24px 28px; max-width:920px}
+  .banner-metodo-cuerpo h3{font-size:13px; font-weight:700; margin:20px 0 8px}
+  .banner-metodo-cuerpo h3:first-child{margin-top:0}
+  .banner-metodo-cuerpo p{font-size:13px; color:var(--muted); line-height:1.65; margin:0 0 10px}
+  .banner-metodo-cuerpo ul{margin:0 0 10px; padding-left:20px}
+  .banner-metodo-cuerpo li{font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:6px}
+  .banner-metodo-cuerpo li strong{color:var(--ink)}
+  .comparativa-metodos{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin:10px 0 16px}
+  .comparativa-metodos>div{border:1px solid var(--line); background:var(--bg); padding:12px 14px}
+  .comparativa-metodos h4{font-size:12px; font-weight:700; margin:0 0 6px; color:var(--ink)}
+  .comparativa-metodos p{font-size:12px; margin:0}
 
   /* ---- Cards genéricas (Metodología / Tokens) ---- */
   .grid-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px}
@@ -196,11 +224,6 @@
   .tok-bar{height:12px; background:var(--uefa); display:inline-block}
   .tok-space-name{font-size:11px; color:var(--muted); width:76px; flex:none}
   .tok-space-px{font-size:11px; color:var(--muted); margin-left:auto}
-
-  /* ---- Footer ---- */
-  footer.app{border-top:1px solid var(--line); background:var(--footer-bg); padding:14px 22px}
-  .foot-row{max-width:1260px; margin:0 auto; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
-    font-size:11px; color:var(--muted)}
 
   /* ---- Tooltip del gráfico de equipo ---- */
   .tt{position:fixed; pointer-events:none; z-index:30; background:var(--paper); border:1px solid var(--accent);
@@ -240,7 +263,6 @@
     <button class="tab" id="tab-conf" role="tab" aria-selected="true" aria-controls="panel-conf">Confederaciones</button>
     <button class="tab" id="tab-rankings" role="tab" aria-selected="false" aria-controls="panel-rankings" tabindex="-1">Rankings</button>
     <button class="tab" id="tab-equipo" role="tab" aria-selected="false" aria-controls="panel-equipo" tabindex="-1">Equipo</button>
-    <button class="tab" id="tab-metodologia" role="tab" aria-selected="false" aria-controls="panel-metodologia" tabindex="-1">Metodología</button>
   </nav>
 </header>
 
@@ -311,7 +333,7 @@
   </section>
 
   <!-- ============ VISTA 4: METODOLOGÍA ============ -->
-  <section id="panel-metodologia" role="tabpanel" aria-labelledby="tab-metodologia" tabindex="0" class="oculto">
+  <section id="panel-metodologia" tabindex="0" class="oculto">
     <div class="intro">
       <div class="eyebrow">Metodología</div>
       <h1 class="titulo">Qué significa cada indicador</h1>
@@ -356,12 +378,50 @@
 
 <div class="tt" id="tooltip" role="status" aria-live="off"></div>
 
-<footer class="app">
-  <div class="foot-row">
-    <span>Modelo de evaluación del desempeño de selecciones · Mundial 2026</span>
-    <span>Análisis retrospectivo — se actualiza por ronda. Historial: <strong>placeholder</strong> hasta conectar <code>40_salidas/datos_interfaz.json</code>.</span>
+<details class="banner-metodo">
+  <summary>
+    <span class="banner-metodo-titulo">Metodología: por qué este modelo y no un conteo directo de puntos o partidos ganados</span>
+    <span class="ind" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </span>
+  </summary>
+  <div class="banner-metodo-cuerpo">
+    <h3>Qué mide este modelo</h3>
+    <p>Un sistema de dos niveles, tipo Elo/FIFA SUM. A nivel de selección, cada partido mueve el rating según cuánta <strong>sorpresa</strong> generó el resultado (diferencia entre lo observado y lo esperado por el modelo antes del partido), ponderada por la importancia de la fase y el margen de gol. A nivel de confederación, solo los cruces contra selecciones de otro bloque continental transfieren rating entre confederaciones, en una proporción fija del cambio de cada equipo.</p>
+
+    <h3>Fuentes de datos</h3>
+    <ul>
+      <li><strong>Ranking FIFA:</strong> snapshot oficial previo al torneo (posición y puntos).</li>
+      <li><strong>Rating Elo:</strong> eloratings.net, snapshot previo al torneo, más sensible a la forma reciente que el ranking FIFA.</li>
+      <li><strong>Resultados del torneo:</strong> marcador, fase y fecha de cada partido jugado.</li>
+    </ul>
+    <p>La fuerza inicial de cada selección puede calcularse con FIFA, con Elo, o con una combinación de ambos (60% FIFA + 40% Elo); el botón sobre el gráfico permite comparar los tres criterios.</p>
+
+    <h3>Por qué no un conteo directo de puntos o partidos ganados</h3>
+    <p>Contar puntos de fase de grupos o partidos ganados trata todos los resultados como si tuvieran el mismo valor informativo. Eso oculta la pregunta relevante: ¿el resultado fue mejor o peor de lo que la fuerza de los equipos hacía esperar?</p>
+    <div class="comparativa-metodos">
+      <div>
+        <h4>Conteo directo (puntos o partidos ganados)</h4>
+        <p>Un triunfo de un candidato al título frente a un equipo débil vale lo mismo que un triunfo inesperado frente a un candidato. No distingue mérito relativo.</p>
+      </div>
+      <div>
+        <h4>Diferencia de goles acumulada</h4>
+        <p>Favorece a selecciones que ya juegan calendarios fáciles (rivales débiles en su zona) y castiga a las que compiten en grupos duros, aunque rindan por encima de lo esperado.</p>
+      </div>
+      <div>
+        <h4>Solo ranking FIFA pre torneo</h4>
+        <p>Es un punto de partida, no una medición de lo ocurrido en el torneo: no se actualiza con los resultados reales de la competencia.</p>
+      </div>
+      <div>
+        <h4>Este modelo (sorpresa ponderada)</h4>
+        <p>Un empate de un equipo débil contra un candidato pesa más que una goleada contra un rival ya muy inferior, porque captura mérito relativo a la expectativa, no el resultado en términos absolutos.</p>
+      </div>
+    </div>
+
+    <h3>Limitaciones conocidas</h3>
+    <p>Confederaciones con una sola selección (caso OFC) no tienen forma de diluir un resultado atípico entre varios equipos: el rating de la confederación es, en la práctica, el rating de esa única selección. Además, una fuerza inicial muy baja (equipo en el extremo inferior del rango de fuerza) puede generar sorpresas desproporcionadas incluso ante resultados modestos, porque la expectativa previa ya era casi nula.</p>
   </div>
-</footer>
+</details>
 
 </div>
 
@@ -701,12 +761,51 @@ function pintarToggleFuerza(){
   });
 }
 
-function initConfeds(){
+const DELTA_CONF_CAMPO_POR_FUENTE = {fifa:"delta_conf", compuesto:"delta_conf_compuesto", elo:"delta_conf_elo"};
+
+// Devuelve hasta 2 partidos que mas subieron y hasta 2 que mas bajaron el
+// rating de la confederacion (solo cruces inter-confederacion, que son los
+// unicos que mueven delta_conf), bajo la fuente activa del toggle (FIFA,
+// Compuesto o Elo). Recorre DATOS.equipos, no un endpoint aparte: usa el
+// mismo historial ya cargado.
+function partidosDestacadosConf(confId){
+  const campo = DELTA_CONF_CAMPO_POR_FUENTE[FUENTE_GRAFICO];
+  const partidos=[];
+  DATOS.equipos.filter(e=>e.confederacion===confId).forEach(e=>{
+    (e.historial||[]).forEach(h=>{
+      if(h.inter_confederacion){
+        partidos.push({codigo:e.codigo, nombre:e.nombre, rival_nombre:h.rival_nombre,
+          fase:h.fase, gf:h.gf, ga:h.ga, resultado:h.resultado, delta_conf:h[campo]});
+      }
+    });
+  });
+  const positivos=[...partidos].sort((a,b)=>b.delta_conf-a.delta_conf).slice(0,2);
+  const negativos=[...partidos].sort((a,b)=>a.delta_conf-b.delta_conf).slice(0,2);
+  return {positivos, negativos};
+}
+
+function filaPartidoHtml(p){
+  return `<li><strong>${esc(p.nombre)}</strong> ${esc(p.gf)}-${esc(p.ga)} vs. ${esc(p.rival_nombre)} `+
+    `<span class="pd-fase">(${esc(p.fase)})</span> ${signoHtml(p.delta_conf,1)}</li>`;
+}
+
+// Construye el grid de tarjetas de confederacion a partir de confsActivas()
+// (fuente activa del toggle), no de DATOS.confederaciones fijo: toda la
+// tarjeta (rating, obs-esperado, transferencia neta, partidos destacados)
+// sigue el toggle FIFA/Compuesto/Elo (consistencia total).
+function pintarGridConf(){
   const grid=$("#grid-conf"); grid.innerHTML="";
-  DATOS.confederaciones.forEach(c=>{
+  confsActivas().forEach(c=>{
     const cc=colorConf(c.id);
     const card=document.createElement("article");
     card.className="card-conf"; card.style.setProperty("--conf-color",cc);
+    const {positivos, negativos} = partidosDestacadosConf(c.id);
+    const seccionPartidos = (positivos.length || negativos.length) ?
+      `<div class="pd-wrap">`+
+        `<div class="pd-titulo">Qué explica este resultado</div>`+
+        (positivos.length ? `<ul class="pd-lista pd-pos">${positivos.map(filaPartidoHtml).join("")}</ul>` : "")+
+        (negativos.length ? `<ul class="pd-lista pd-neg">${negativos.map(filaPartidoHtml).join("")}</ul>` : "")+
+      `</div>` : "";
     card.innerHTML =
       `<div class="cab">${dotHtml(c.id,11)}<span class="nombre">${esc(c.id)}</span><span class="neq">${c.n_equipos} selecciones</span></div>`+
       `<div class="linea-rating">`+
@@ -719,9 +818,14 @@ function initConfeds(){
       `<div class="stats">`+
         `<div><div class="stat-k">Observado − esperado</div><div class="stat-v">${signoHtml(c.obs_vs_esp,2)}</div><div class="stat-nota">puntos en cruces</div></div>`+
         `<div><div class="stat-k">Transferencia neta</div><div class="stat-v">${signoHtml(c.transfer_neto,1)}</div><div class="stat-nota">puntos de rating</div></div>`+
-      `</div>`;
+      `</div>`+
+      seccionPartidos;
     grid.appendChild(card);
   });
+}
+
+function initConfeds(){
+  pintarGridConf();
   $("#chart-conf").innerHTML = barrasConf(confsActivas());
   pintarPanelMetodo();
   pintarToggleFuerza();
@@ -736,6 +840,7 @@ function initConfeds(){
 function cambiarFuenteGrafico(fuente){
   if(fuente===FUENTE_GRAFICO) return;
   FUENTE_GRAFICO = fuente;
+  pintarGridConf();
   $("#chart-conf").innerHTML = barrasConf(confsActivas());
   pintarPanelMetodo();
   pintarToggleFuerza();
@@ -1112,8 +1217,7 @@ function initTokens(){
    NAVEGACIÓN POR TABS (accesible, teclado)
    ================================================================== */
 const TABS=[
-  ["tab-conf","panel-conf"], ["tab-rankings","panel-rankings"], ["tab-equipo","panel-equipo"],
-  ["tab-metodologia","panel-metodologia"]
+  ["tab-conf","panel-conf"], ["tab-rankings","panel-rankings"], ["tab-equipo","panel-equipo"]
 ];
 function activarTab(idx, foco){
   TABS.forEach(([tb,pn],i)=>{

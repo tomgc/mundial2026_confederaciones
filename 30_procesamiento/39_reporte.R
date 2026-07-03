@@ -5,7 +5,8 @@
 # Insumos: 20_insumos/equipos_mundial2026.csv, ranking_fifa_20260611.csv, elo_20260702.csv;
 #   40_salidas/rating_equipos.csv, rating_confederaciones.csv,
 #   rating_confederaciones_compuesto.csv, rating_confederaciones_elo.csv,
-#   historial_partidos.csv, fuerza_equipos.csv
+#   historial_partidos.csv, historial_partidos_compuesto.csv,
+#   historial_partidos_elo.csv, fuerza_equipos.csv
 # Salidas: 40_salidas/datos_interfaz.json
 # Autor: pipeline mundial2026_confederaciones
 # Fecha: 2026-07-02
@@ -31,6 +32,8 @@ ruta_conf      <- here::here("40_salidas", "rating_confederaciones.csv")
 ruta_conf_comp <- here::here("40_salidas", "rating_confederaciones_compuesto.csv")
 ruta_conf_elo  <- here::here("40_salidas", "rating_confederaciones_elo.csv")
 ruta_historial <- here::here("40_salidas", "historial_partidos.csv")
+ruta_hist_comp <- here::here("40_salidas", "historial_partidos_compuesto.csv")
+ruta_hist_elo  <- here::here("40_salidas", "historial_partidos_elo.csv")
 ruta_salida    <- here::here("40_salidas", "datos_interfaz.json")
 
 # ---- Constantes y parametros ----
@@ -65,6 +68,8 @@ conf      <- read_csv(ruta_conf, col_types = cols(.default = col_guess()))
 conf_comp <- read_csv(ruta_conf_comp, col_types = cols(.default = col_guess()))
 conf_elo  <- read_csv(ruta_conf_elo, col_types = cols(.default = col_guess()))
 historial <- read_csv(ruta_historial, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
+hist_comp <- read_csv(ruta_hist_comp, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
+hist_elo  <- read_csv(ruta_hist_elo, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
 fuerza    <- read_csv(ruta_fuerza, col_types = cols(codigo_fifa = col_character(), fuente_fuerza = col_character(), .default = col_guess()))
 
 # P8: fuente_fuerza leida de fuerza_equipos.csv (unica fuente de verdad).
@@ -82,7 +87,8 @@ stopifnot(
   "rating debe tener 48 equipos" = nrow(rating) == 48,
   "conf debe tener 6 confederaciones" = nrow(conf) == 6,
   "conf_comp debe tener 6 confederaciones" = nrow(conf_comp) == 6,
-  "conf_elo debe tener 6 confederaciones" = nrow(conf_elo) == 6
+  "conf_elo debe tener 6 confederaciones" = nrow(conf_elo) == 6,
+  "hist_comp y hist_elo deben tener igual numero de filas" = nrow(hist_comp) == nrow(hist_elo)
 )
 if (anyNA(rating$rating_actual)) warning("NAs detectados en rating_actual")
 
@@ -120,8 +126,19 @@ stopifnot(
 # 5. Historial por equipo, con rival_nombre/rival_confederacion resueltos por join contra el maestro.
 mapa_rival <- maestro_enriquecido |> select(codigo_fifa, equipo_es, confederacion)
 
+# delta_conf bajo compuesto/elo: llave codigo+rival+fase+gf+gc (identifica el
+# cruce y su resultado exacto; suficiente porque no hay partidos repetidos
+# entre el mismo par en la misma fase). Solo existen filas inter-confederacion
+# (paridad P13-followup); partidos intra-confederacion quedan sin match -> NA.
+delta_comp <- hist_comp |>
+  transmute(codigo, rival, fase, gf, gc, delta_conf_compuesto = r1(delta_conf))
+delta_elo <- hist_elo |>
+  transmute(codigo, rival, fase, gf, gc, delta_conf_elo = r1(delta_conf))
+
 historial_enriquecido <- historial |>
   left_join(mapa_rival, by = c("rival" = "codigo_fifa")) |>
+  left_join(delta_comp, by = c("codigo", "rival", "fase", "gf", "gc")) |>
+  left_join(delta_elo, by = c("codigo", "rival", "fase", "gf", "gc")) |>
   arrange(codigo, id_partido) |>
   mutate(partido = row_number(), .by = codigo) |>
   transmute(
@@ -143,9 +160,17 @@ historial_enriquecido <- historial |>
     rating_post = rating_post,
     rank_post = rank_post,
     inter_confederacion = inter_confederacion,
-    delta_conf = r1(delta_conf)
+    delta_conf = r1(delta_conf),
+    delta_conf_compuesto = delta_conf_compuesto,
+    delta_conf_elo = delta_conf_elo
   )
 stopifnot("rival_nombre no debe tener NA tras el join" = !anyNA(historial_enriquecido$rival_nombre))
+stopifnot(
+  "delta_conf_compuesto debe estar presente en todo partido inter-confederacion" =
+    all(!is.na(historial_enriquecido$delta_conf_compuesto[historial_enriquecido$inter_confederacion])),
+  "delta_conf_elo debe estar presente en todo partido inter-confederacion" =
+    all(!is.na(historial_enriquecido$delta_conf_elo[historial_enriquecido$inter_confederacion]))
+)
 
 # Historial ya viene ordenado por codigo, partido (arrange previo). Split por equipo.
 historial_por_equipo <- split(select(historial_enriquecido, -codigo), historial_enriquecido$codigo)
@@ -236,6 +261,6 @@ escribir_json_atomico(salida, ruta_salida)
 
 # 10. Resumen
 message(sprintf(
-  "[39_reporte] OK: %d equipos, %d confederaciones, fuente_fuerza='%s' -> %s",
+  "[39_reporte] OK: %d equipos, %d confederaciones, fuente_fuerza='%s', delta_conf 3 fuentes en historial -> %s",
   length(salida$equipos), length(salida$confederaciones), FUENTE_FUERZA_ACTUAL, ruta_salida
 ))

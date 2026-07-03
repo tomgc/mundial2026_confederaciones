@@ -19,6 +19,10 @@
 #              fuerza_base_compuesto siempre, para el toggle FIFA/Compuesto del sitio)
 #            40_salidas/rating_confederaciones_elo.csv (nivel 2, bajo
 #              fuerza_elo siempre, tercer boton del toggle del sitio)
+#            40_salidas/historial_partidos_compuesto.csv (detalle inter-confederacion
+#              bajo fuerza_base_compuesto, solo delta_conf; insumo de "partidos
+#              destacados" del toggle)
+#            40_salidas/historial_partidos_elo.csv (idem, bajo fuerza_elo)
 # Autor:     [tu nombre]
 # Fecha:     2026-07-02
 # ============================================================================
@@ -47,6 +51,8 @@ ARCHIVO_HISTORIAL       <- ruta_salidas("historial_partidos.csv")
 ARCHIVO_RATING_CONF     <- ruta_salidas("rating_confederaciones.csv")
 ARCHIVO_RATING_CONF_COMPUESTO <- ruta_salidas("rating_confederaciones_compuesto.csv")
 ARCHIVO_RATING_CONF_ELO <- ruta_salidas("rating_confederaciones_elo.csv")
+ARCHIVO_HISTORIAL_CONF_COMPUESTO <- ruta_salidas("historial_partidos_compuesto.csv")
+ARCHIVO_HISTORIAL_CONF_ELO <- ruta_salidas("historial_partidos_elo.csv")
 
 # Escalera de fases del torneo, en orden de ejecucion. Toda fase fuera de
 # "grupos" es eliminacion directa (empate exige desempate real).
@@ -308,6 +314,9 @@ rating_confederaciones <- rating_conf_inicial |>
 # unicamente el rating de confederacion para alimentar el toggle
 # FIFA/Compuesto del sitio (equipos e historial siguen publicandose solo
 # bajo FUENTE_FUERZA activa, sin cambios).
+# Devuelve list(agregado=<tibble confederaciones>, detalle=<tibble partidos
+# inter-confederacion>): el detalle alimenta "partidos destacados" por
+# fuente en el sitio (paridad con el toggle agregado, P13-followup).
 simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
   r_ini <- fuerza_tbl |>
     dplyr::transmute(codigo_fifa, confederacion,
@@ -319,6 +328,8 @@ simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
     tibble::deframe()
   obs_esp <- tibble::tibble(confederacion = character(), obs_vs_esp = double(), transfer_neto = double())
   acumulador <- list()
+  detalle <- vector("list", nrow(orden_partidos) * 2L)
+  idx_det <- 1L
 
   for (i in seq_len(nrow(orden_partidos))) {
     p <- orden_partidos[i, ]
@@ -340,6 +351,17 @@ simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
         confederacion = conf_local[[p$local_codigo]], obs = W_l - We_l, transf = dC_l)
       acumulador[[length(acumulador) + 1]] <- tibble::tibble(
         confederacion = conf_local[[p$visita_codigo]], obs = W_v - We_v, transf = dC_v)
+
+      resultado_l <- if (W_l == 1) "V" else if (W_l == 0) "D" else "E"
+      resultado_v <- if (W_v == 1) "V" else if (W_v == 0) "D" else "E"
+      detalle[[idx_det]] <- tibble::tibble(
+        codigo = p$local_codigo, rival = p$visita_codigo, fase = as.character(p$fase),
+        gf = p$gf_local, gc = p$gf_visita, resultado = resultado_l, delta_conf = round(dC_l, 3))
+      idx_det <- idx_det + 1L
+      detalle[[idx_det]] <- tibble::tibble(
+        codigo = p$visita_codigo, rival = p$local_codigo, fase = as.character(p$fase),
+        gf = p$gf_visita, gc = p$gf_local, resultado = resultado_v, delta_conf = round(dC_v, 3))
+      idx_det <- idx_det + 1L
     }
   }
 
@@ -350,7 +372,7 @@ simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
     tibble::tibble(confederacion = character(), obs_vs_esp = double(), transfer_neto = double())
   }
 
-  r_ini |>
+  agregado <- r_ini |>
     dplyr::summarise(rating_inicial = mean(rating), n_equipos = dplyr::n(), .by = confederacion) |>
     dplyr::mutate(rating_actual = round(r_conf[confederacion], 3)) |>
     dplyr::left_join(obs_esp, by = "confederacion") |>
@@ -361,10 +383,20 @@ simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
       rating_inicial = round(rating_inicial, 3)
     ) |>
     dplyr::arrange(dplyr::desc(delta))
+
+  detalle_tbl <- if (idx_det > 1L) dplyr::bind_rows(detalle[seq_len(idx_det - 1L)]) else
+    tibble::tibble(codigo = character(), rival = character(), fase = character(),
+                    gf = integer(), gc = integer(), resultado = character(), delta_conf = double())
+
+  list(agregado = agregado, detalle = detalle_tbl)
 }
 
-rating_confederaciones_compuesto <- simular_confederaciones(fuerza, "fuerza_base_compuesto")
-rating_confederaciones_elo <- simular_confederaciones(fuerza, "fuerza_base_elo_toggle")
+.sim_compuesto <- simular_confederaciones(fuerza, "fuerza_base_compuesto")
+.sim_elo <- simular_confederaciones(fuerza, "fuerza_base_elo_toggle")
+rating_confederaciones_compuesto <- .sim_compuesto$agregado
+rating_confederaciones_elo <- .sim_elo$agregado
+historial_conf_compuesto <- .sim_compuesto$detalle
+historial_conf_elo <- .sim_elo$detalle
 
 # ---- Validacion de integridad (politica C.8) ----
 stopifnot(
@@ -373,7 +405,8 @@ stopifnot(
   all(!is.na(rating_equipos$rating_actual)),
   nrow(rating_confederaciones) == dplyr::n_distinct(fuerza$confederacion),
   nrow(rating_confederaciones_compuesto) == dplyr::n_distinct(fuerza$confederacion),
-  nrow(rating_confederaciones_elo) == dplyr::n_distinct(fuerza$confederacion)
+  nrow(rating_confederaciones_elo) == dplyr::n_distinct(fuerza$confederacion),
+  nrow(historial_conf_compuesto) == nrow(historial_conf_elo)
 )
 
 # ---- Escritura atomica ----
@@ -382,7 +415,9 @@ escribir_csv_atomico(historial_partidos, ARCHIVO_HISTORIAL)
 escribir_csv_atomico(rating_confederaciones, ARCHIVO_RATING_CONF)
 escribir_csv_atomico(rating_confederaciones_compuesto, ARCHIVO_RATING_CONF_COMPUESTO)
 escribir_csv_atomico(rating_confederaciones_elo, ARCHIVO_RATING_CONF_ELO)
+escribir_csv_atomico(historial_conf_compuesto, ARCHIVO_HISTORIAL_CONF_COMPUESTO)
+escribir_csv_atomico(historial_conf_elo, ARCHIVO_HISTORIAL_CONF_ELO)
 
-log_msg(sprintf("Motor completado: %d equipos, %d partidos, %d filas de historial, %d pendientes de resolucion. Confederaciones (fifa y compuesto) escritas.",
+log_msg(sprintf("Motor completado: %d equipos, %d partidos, %d filas de historial, %d pendientes de resolucion. Confederaciones y detalle inter-confederacion (fifa, compuesto, elo) escritos.",
                 nrow(rating_equipos), nrow(orden_partidos), nrow(historial_partidos), n_pendientes),
         "INFO", "33_motor")
