@@ -792,8 +792,13 @@ function partidosDestacadosConf(confId){
       }
     });
   });
-  const positivos=[...partidos].sort((a,b)=>b.delta_conf-a.delta_conf).slice(0,N_PARTIDOS_DESTACADOS);
-  const negativos=[...partidos].sort((a,b)=>a.delta_conf-b.delta_conf).slice(0,N_PARTIDOS_DESTACADOS);
+  // Con universos chicos (ej. OFC, 1 solo equipo), tomar N de cada lado
+  // puede solapar el mismo partido en positivos y negativos. Tope: la
+  // mitad del universo disponible, sin superar N_PARTIDOS_DESTACADOS.
+  const tope = Math.min(N_PARTIDOS_DESTACADOS, Math.floor(partidos.length/2) || partidos.length);
+  const ordenadosDesc = [...partidos].sort((a,b)=>b.delta_conf-a.delta_conf);
+  const positivos = ordenadosDesc.slice(0, tope);
+  const negativos = ordenadosDesc.slice(-tope).reverse().filter(p=>!positivos.includes(p));
   return {positivos, negativos};
 }
 
