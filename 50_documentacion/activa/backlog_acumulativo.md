@@ -2,35 +2,54 @@
 
 ## Objetivo del proyecto
 
-Modelo de comparación de desempeño de selecciones nacionales por confederación en el Mundial 2026, tipo Elo/FIFA SUM, que mide rendimiento observado vs. esperado (no solo rating absoluto) para responder qué confederación tuvo mejor desempeño relativo a la fuerza de sus equipos. Construido en R (Positron), con interfaz web estática (GitHub Pages). Para uso analítico personal del usuario.
+Modelo de comparación de desempeño de selecciones nacionales por
+confederación en el Mundial 2026, tipo Elo/FIFA SUM, que mide
+rendimiento observado vs. esperado (no solo rating absoluto) para
+responder qué confederación tuvo mejor desempeño relativo a la fuerza
+de sus equipos. Construido en R (Positron), con interfaz web estática
+de archivo único (GitHub Pages). Para uso analítico personal del
+usuario.
 
 ## Nota metodológica
 
-Cuenta como "cambio" cada solicitud distinguible del usuario (una decisión, una corrección, un nuevo requisito), no las acciones técnicas que la implementan. No cuentan errores del asistente corregidos de inmediato en el mismo turno; sí cuentan los bugfixes que el usuario tuvo que señalar o que quedaron documentados como tal. Clasificación por intención primaria. Fuente del conteo: los traspasos de cierre (`traspaso_cierre_vNN.md`).
+Cuenta como "cambio" cada solicitud distinguible del usuario (una
+decisión, una corrección, un nuevo requisito), no las acciones técnicas
+que la implementan. No cuentan los errores del asistente corregidos de
+inmediato en el mismo turno, antes de la primera entrega (autocorrección
+silenciosa); sí cuentan los bugfixes que el usuario tuvo que señalar o
+que quedaron documentados como tal en el traspaso. La clasificación es
+por intención primaria del cambio, no por el archivo tocado. Fuentes del
+conteo: `traspaso_cierre_v01.md` a `traspaso_cierre_v04.md`.
 
 ## Clasificación temática
 
 | Categoría | N° | % | Descripción |
 |---|---|---|---|
-| Arquitectura/andamiaje | 1 | 5.6% | Inicialización Rama A completa |
-| Diseño del modelo | 4 | 22.2% | G continuo, eliminar surprise_factor, jerarquía confederación, tabla de importancia por fase |
-| Ingesta de datos | 5 | 27.8% | Maestro 48 equipos, FIFA snapshot, Elo snapshot (x2 iteraciones), resultados con fallback |
-| Bugs de código | 2 | 11.1% | `clave_nombre` destruye dígitos (fase), `.gitignore` comentario inline |
-| Interfaz/diseño visual | 3 | 16.7% | Prompt Claude Design, integración Claude Code, fuentes locales |
-| Infraestructura/deploy | 2 | 11.1% | Publicación GitHub, configuración Pages |
-| Reporte/integración de datos reales | 1 | 5.6% | Implementación de `39_reporte.R` (P1) |
+| Arquitectura/andamiaje | 1 | 2% | Inicialización Rama A completa (v01) |
+| Diseño del modelo | 4 | 9% | G continuo, eliminar surprise_factor, jerarquía confederación, tabla de importancia por fase (v01) |
+| Ingesta de datos | 6 | 14% | Maestro 48 equipos, snapshots FIFA/Elo, fuente única persistida (P8), reemplazo completo de fuente de resultados por datos reales (P14) |
+| Bugs de código | 9 | 21% | `clave_nombre`, `.gitignore`, tolerancias de auditoría, columna inexistente, JSON no sincronizado en producción, `ga`/`gc`, orden de ejecución, comparación por texto crudo |
+| Interfaz/diseño visual | 8 | 19% | Handoff Claude Design, integración, reordenamiento de gráfico, banner metodológico, toggle 3 fuentes, partidos destacados, ajustes de tabla/columnas, CSS de ícono |
+| Infraestructura/deploy | 3 | 7% | Publicación GitHub, configuración Pages, resolución de lag de propagación |
+| Reportería/contrato de datos | 3 | 7% | Implementación `39_reporte.R`, extensión a 3 fuentes de `delta_conf`, consistencia total de tarjeta por toggle |
+| Auditoría y validación | 4 | 9% | Protocolo 4.5 completo, `stopifnot` de NA, investigación worldfootballR, validación cruzada por `codigo_fifa` |
+| Gobernanza y decisiones permanentes | 3 | 7% | Excepción handoff (P5/P6), decisión OFC (P11), prohibición permanente de datos sintéticos (P15) |
+| Housekeeping/documentación | 2 | 5% | Deuda de duplicación de archivos, backlog sin actualizar (meta) |
 
-18 cambios totales. Categorías bajo 2% o sobre 25%: ninguna en este cierre; sin acciones de fusión/subdivisión requeridas.
+Taxonomía provisional (definida en v01), sin refinar aún en sesión
+dedicada. Ninguna categoría supera el 25% ni cae bajo el 2% de forma
+sostenida; sin acción de fusión/subdivisión requerida por ahora.
 
 ## Resumen estadístico por sesión
 
 | Sesión | Traspasos generados | N° de cambios | Modelo | Foco |
 |---|---|---|---|---|
-| 1 | v01 | 17 | Claude (Sonnet, vía interfaz) + Claude Code | Andamiaje + pipeline completo + interfaz |
-| 2 | v02 | 1 | Claude (Sonnet, vía interfaz) + Claude Code | Implementación de `39_reporte.R`, datos reales en el sitio |
+| 1 | v01 | 17 | Claude (Sonnet) + Claude Code | Andamiaje + pipeline + interfaz |
+| 2 | v02 | 3 | Claude (Sonnet) + Claude Code | `39_reporte.R`, datos reales en sitio |
+| 3 | v03 | 12 | Claude Sonnet 5 + Claude Code | Pendientes v02, toggle 3 fuentes, banner metodológico |
+| 4 | v04 | 11 | Claude Sonnet 5 + Claude Code | P13, partidos destacados x3 fuentes, reemplazo de dataset sintético (P14) |
 | — | Refinamientos menores no atribuibles | 0 | — | — |
-
-**Total: 18 cambios, 2 sesiones.**
+| **Total** | 4 traspasos | **43** | | |
 
 ## Detalle cronológico
 
@@ -47,15 +66,42 @@ Cuenta como "cambio" cada solicitud distinguible del usuario (una decisión, una
 11. Resolución de fallo transitorio de deploy (reintento).
 12. Versionado inicial del repo (bug fix de `.gitignore` incluido).
 13. Implementación de `32_ingesta_resultados.R` (worldfootballR + fallback CC0).
-14. Bugfix reportado indirectamente por el usuario (WARN de fase sin_clasificar) → corrección de `clave_nombre`.
+14. Bugfix reportado indirectamente por el usuario (WARN de fase sin_clasificar) → corrección de `clave_nombre` (Bug 1, v01).
 15. Pregunta de dominio del usuario sobre marcador (¿incluye penales?) → hallazgo de que el dataset no los expone.
 16. Decisión de diseño: inferencia de avance en empates de eliminación, delegada a `33_motor_elo.R`.
-17. Implementación de `33_motor_elo.R` con la inferencia de avance; corrección de error propio (dependencia de orden en `run_all(only=3)`); reemplazo de Elo scraping por snapshot fijo verificado (screenshots del usuario); commit y push final de la sesión 1.
-
-### Sesión 2
-
-18. Implementación de `39_reporte.R` (P1 del traspaso v01): join de insumos crudos y salidas del motor para emitir `datos_interfaz.json`, resolviendo `sede` (constante placeholder), `rival_nombre`/`rival_confederacion` (join contra maestro) y `partido` (índice secuencial recalculado, no `id_partido` crudo); verificado en R real (NA=0 en campos críticos, conteo de historial=164) y en navegador (flag "Datos reales del pipeline"); commit `8eead90` pusheado.
+17. Implementación de `33_motor_elo.R` con la inferencia de avance; corrección de error propio (dependencia de orden en `run_all(only=3)`, Error del asistente v01); reemplazo de Elo scraping por snapshot fijo verificado (screenshots del usuario); commit y push final de sesión 1.
+18. Extracción del contrato de datos exacto directamente de `generarMock()` en `index.html`, en vez de asumirlo desde el traspaso v01 (sesión 2).
+19. Identificación de insumos faltantes (`pos_fifa`, `puntos_fifa`, `elo`, `nombre`) mediante verificación cruzada de columnas antes de escribir el join (sesión 2).
+20. Implementación de `39_reporte.R` completo: join de 6 CSV, transformación al contrato, `SEDE_DEFAULT` constante, `partido` recalculado como índice secuencial por equipo. Resuelve P1 de v01 (sesión 2).
+21. Cierre de P8 (v02): `31_ingesta_fuerza.R` agrega columna `fuente_fuerza` persistida; `39_reporte.R` la lee de ahí, elimina riesgo de desincronización con `FUENTE_FUERZA_ACTUAL` (sesión 3).
+22. Gráfico de confederaciones reordenado sobre las tarjetas en `index.html` (sesión 3).
+23. Investigación de causa raíz de fallo de `worldfootballR`/FBref (P3): archivado por su dueño el 18-sep-2025; decisión del usuario de mantener intento con fallback sin cambio de código en ese momento (sesión 3).
+24. Auditoría de cifras publicadas (protocolo 4.5, P2 de v01): 3 scripts nuevos (`91_auditoria_helpers.R`, `92_auditoria_orquestador.R`, `93_auditoria_spotcheck.R`), 4/4 familias OK, 5/5 checks OK (sesión 3).
+25. `stopifnot` de NA agregado en `39_reporte.R` para `pos_fifa`/`puntos_fifa`/`elo`, cierra P10 de v02 (sesión 3).
+26. Decisión permanente: excepción del handoff de Claude Design (`data/` duplicado, `support.js`) documentada como excepción análoga a `andamios/`, cierra P5/P6 (sesión 3).
+27. Causa raíz de OFC documentada (P11, nuevo): rating inicial 0 con 1 solo equipo genera sorpresa máxima artificial; deuda técnica con dos alternativas propuestas, sin corrección de código (sesión 3).
+28. Feature no solicitada como pendiente previo: toggle de 3 fuentes de fuerza (FIFA/Compuesto/Elo) sobre el gráfico de confederaciones, con simulación triplicada y panel metodológico (sesión 3).
+29. Banner colapsable de metodología argumentativa, reemplaza footer placeholder; pestaña Metodología quitada de la navegación (sesión 3).
+30. Sección "Qué explica este resultado" por tarjeta de confederación, derivada de `delta_conf` ya cargado (sesión 3).
+31. Columnas numéricas de Rankings centradas, tabla sin límite de altura, orden default cambiado a ascendente por `#` (captura de usuario, sesión 3).
+32. Pestaña Tokens quitada de la navegación, contenido preservado oculto en el DOM (captura de usuario, sesión 3).
+33. Confirmación de push del último lote de `index.html` de sesión 3 (banner, ícono, partidos destacados, quitar tab Metodología), cierra P13 (sesión 4).
+34. Extensión de partidos destacados por confederación a las 3 fuentes del toggle: captura de detalle por partido en `33_motor_elo.R` (`simular_confederaciones()` retorna `list(agregado, detalle)`), nuevos CSV `historial_partidos_compuesto.csv`/`historial_partidos_elo.csv` (sesión 4).
+35. `39_reporte.R` agrega `delta_conf_compuesto`/`delta_conf_elo` a `historial[]` vía join por `codigo+rival+fase+gf+gc` (sesión 4).
+36. `index.html`: toda la tarjeta de confederación (no solo partidos destacados) sigue el toggle activo; decisión explícita del usuario de consistencia total (sesión 4).
+37. Detección de dataset de partidos sintético en producción por el usuario (Bug 3/v04, disparador de P14); instrucción permanente: prohibido usar datos ficticios en cualquier fuente futura del proyecto (P15, sesión 4).
+38. Reemplazo completo de `32_ingesta_resultados.R`: fuente primaria `openfootball/worldcup.json` (real), validación cruzada `thestatsapi.com` por `codigo_fifa`, fallback de última instancia con warning explícito de posible dato sintético (Cambio 6, P14, sesión 4).
+39. CSS del banner metodológico corregido (`justify-content`), ícono chevron pegado al texto tras feedback visual del usuario (sesión 4).
+40. Sección de metodología del sitio reescrita parcialmente: analogía inicial, ejemplo numérico de sorpresa, comparativa ampliada de 4 a 6 métodos (sesión 4).
+41. Resolución de lag de propagación de GitHub Pages (>10 min) con commit vacío forzando rebuild (sesión 4).
+42. Bug de columna `ga`/`gc` en `33_motor_elo.R` corregido tras fallo de join (Bug 1, v04).
+43. Bug de orden de ejecución en `validar_contra_thestatsapi()`/`mapear_codigo()` corregido (Bug 2, v04); falso positivo de validación cruzada por texto crudo resuelto comparando por `codigo_fifa` (Bug 4, v04).
 
 ## Delta del backlog
 
-Respecto a v01 (backlog embebido en `traspaso_cierre_v01.md`): 1 entrada nueva (#18). Nueva categoría temática agregada: "Reporte/integración de datos reales" (antes no existía; nace con esta entrega). Sin reclasificaciones de entradas anteriores. Recuentos de porcentaje recalculados sobre el nuevo total de 18 (antes 17).
+Primera generación del archivo (política §10, obligatorio desde el
+segundo cierre; no se generó en v02 ni v03 pese a ser exigible desde
+v02 — deuda ya registrada en v03 y v04, cerrada con este archivo).
+43 entradas consolidadas desde v01 a v04. Taxonomía temática definida
+por primera vez con 10 categorías (provisional, a refinar en sesión
+dedicada si el proyecto lo amerita).
