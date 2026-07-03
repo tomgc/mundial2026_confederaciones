@@ -387,7 +387,9 @@
   </summary>
   <div class="banner-metodo-cuerpo">
     <h3>Qué mide este modelo</h3>
-    <p>Un sistema de dos niveles, tipo Elo/FIFA SUM. A nivel de selección, cada partido mueve el rating según cuánta <strong>sorpresa</strong> generó el resultado (diferencia entre lo observado y lo esperado por el modelo antes del partido), ponderada por la importancia de la fase y el margen de gol. A nivel de confederación, solo los cruces contra selecciones de otro bloque continental transfieren rating entre confederaciones, en una proporción fija del cambio de cada equipo.</p>
+    <p>La idea de fondo es simple: un empate inesperado contra un candidato al título dice más de un equipo que una goleada previsible a un rival ya débil. El modelo captura esa diferencia con lo que llamamos <strong>sorpresa</strong>: la distancia entre lo que pasó y lo que el modelo esperaba antes del partido.</p>
+    <p><strong>Ejemplo:</strong> si un equipo tenía 20% de probabilidad de ganar (We = 0.2) y gana (W = 1), la sorpresa es 0.8. Si un candidato con 80% de probabilidad de ganar (We = 0.8) efectivamente gana, la sorpresa es solo 0.2. El primer resultado mueve mucho más el rating que el segundo, aunque ambos terminen en victoria.</p>
+    <p>Es un sistema de dos niveles, tipo Elo/FIFA SUM. A nivel de selección, cada partido mueve el rating según esa sorpresa, ponderada por la importancia de la fase y el margen de gol. A nivel de confederación, solo los cruces contra selecciones de otro bloque continental transfieren rating entre confederaciones, en una proporción fija del cambio de cada equipo.</p>
 
     <h3>Fuentes de datos</h3>
     <ul>
@@ -411,6 +413,14 @@
       <div>
         <h4>Solo ranking FIFA pre torneo</h4>
         <p>Es un punto de partida, no una medición de lo ocurrido en el torneo: no se actualiza con los resultados reales de la competencia.</p>
+      </div>
+      <div>
+        <h4>Avance en llaves (fase eliminatoria)</h4>
+        <p>Depende del sorteo, no solo del nivel del equipo: si dos candidatos fuertes del mismo continente se cruzan temprano, uno queda eliminado sin haber jugado mal.</p>
+      </div>
+      <div>
+        <h4>Goles esperados acumulados (xG)</h4>
+        <p>Mide la calidad de las ocasiones generadas, no el resultado real. En un torneo corto, no captura la efectividad bajo presión ni el resultado que efectivamente ocurrió.</p>
       </div>
       <div>
         <h4>Este modelo (sorpresa ponderada)</h4>
