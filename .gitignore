@@ -38,3 +38,4 @@ _archivo/
 # Outputs temporales
 *_freeze/
 .quarto/
+30_procesamiento/90_simulacion_compuesto.R
