@@ -2,30 +2,29 @@
 # 32_ingesta_resultados.R
 # Proposito: obtener los partidos jugados del Mundial 2026 (fecha, fase,
 #            rivales, marcador) para las 48 selecciones. Fuente primaria:
-#            worldfootballR (FBref). Fallback: dataset CC0 de GitHub
-#            (matches_detailed.csv, mominullptr/FIFA-World-Cup-2026-Dataset).
+#            openfootball/worldcup.json (CC0, mantenido a mano por Gerald
+#            Bauer, sincronizado con ESPN/FIFA; sin API key). Validacion
+#            cruzada: thestatsapi.com/fixtures.csv (calendario, sin marcador,
+#            solo para detectar partidos faltantes o mal mapeados). Fallback
+#            de ultima instancia: dataset CC0 de GitHub (matches_detailed.csv,
+#            mominullptr/FIFA-World-Cup-2026-Dataset) — advertencia explicita
+#            si se usa: puede contener datos sinteticos, no reales.
 #            Re-ejecutable por jornada (idempotente: sobrescribe la salida
 #            completa en cada corrida, no acumula duplicados).
 # Insumos:   20_insumos/equipos_mundial2026.csv (maestro, para mapear codigos)
-#            + FBref (worldfootballR) o, si falla, GitHub raw (fallback)
+#            + openfootball/worldcup.json (GitHub raw, primaria)
+#            + thestatsapi.com/fixtures.csv (validacion cruzada, opcional)
+#            + GitHub raw CC0 (fallback de ultima instancia)
 # Salidas:   40_salidas/resultados_partidos.csv (escritura atomica)
 # Autor:     [tu nombre]
-# Fecha:     2026-07-02
+# Fecha:     2026-07-03
 # ============================================================================
 
 # ---- Auto-instalacion ----
-.pkgs <- c("here", "dplyr", "stringr", "readr", "janitor", "tibble", "purrr", "stringi")
+.pkgs <- c("here", "dplyr", "stringr", "readr", "janitor", "tibble", "purrr",
+           "stringi", "jsonlite")
 .falta <- .pkgs[!vapply(.pkgs, requireNamespace, logical(1), quietly = TRUE)]
 if (length(.falta) > 0) utils::install.packages(.falta)
-# worldfootballR no esta al dia en CRAN; se instala desde GitHub si falta.
-if (!requireNamespace("worldfootballR", quietly = TRUE)) {
-  if (!requireNamespace("devtools", quietly = TRUE)) utils::install.packages("devtools")
-  message("Instalando worldfootballR desde GitHub (no disponible via CRAN al dia)...")
-  tryCatch(
-    devtools::install_github("JaseZiv/worldfootballR", upgrade = "never"),
-    error = function(e) message("No se pudo instalar worldfootballR: ", conditionMessage(e))
-  )
-}
 
 library(dplyr)
 library(stringr)
@@ -43,29 +42,34 @@ if (!exists("ruta_insumos")) {
 ARCHIVO_MAESTRO <- ruta_insumos("equipos_mundial2026.csv")
 ARCHIVO_SALIDA  <- ruta_salidas("resultados_partidos.csv")
 
-# URL no-domestica de FBref para el historial de Copas del Mundo (usada con
-# country = "" segun el patron documentado de worldfootballR).
-URL_FBREF_WC     <- "https://fbref.com/en/comps/1/history/World-Cup-Seasons"
-SEASON_END_YEAR  <- 2026
+# Fuente primaria: real, mantenida a mano, sincronizada con ESPN/FIFA.
+URL_OPENFOOTBALL <- "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json"
 
-# Fallback: version "detailed" (nombres legibles) del dataset CC0 en GitHub.
+# Validacion cruzada: calendario real independiente (sin marcador gratis;
+# solo confirma que el partido existe, fecha y equipos, no el resultado).
+URL_THESTATSAPI <- "https://www.thestatsapi.com/world-cup/data/fixtures.csv"
+
+# Fallback de ultima instancia si openfootball falla. ADVERTENCIA: este
+# dataset puede contener resultados sinteticos/ficticios (confirmado en
+# sesion 2026-07-03); usarlo deja fuente_usada = "fallback_cc0_sintetico"
+# y dispara un WARN fuerte, nunca silencioso.
 URL_FALLBACK_CC0 <- "https://raw.githubusercontent.com/mominullptr/FIFA-World-Cup-2026-Dataset/main/matches_detailed.csv"
 
-PAUSA_SCRAPE <- 3  # cortesia FBref (bot-traffic policy)
-
-# Normalizacion de fase a la escalera canonica del proyecto.
-# Ampliar si una fuente usa una etiqueta no contemplada.
+# Normalizacion de fase a la escalera canonica del proyecto. openfootball usa
+# "Matchday N" para grupos y nombres de fase en ingles para el resto; se
+# amplia el mapa existente (compatible con el fallback CC0 y con el legado
+# FBref) en vez de reemplazarlo.
 MAPA_FASE <- c(
   "group stage" = "grupos", "group" = "grupos", "grupos" = "grupos",
   "round of 32" = "dieciseisavos", "r32" = "dieciseisavos",
   "dieciseisavos" = "dieciseisavos", "dieciseisavos de final" = "dieciseisavos",
   "round of 16" = "octavos", "r16" = "octavos", "octavos" = "octavos",
   "octavos de final" = "octavos",
-  "quarter-final" = "cuartos", "quarterfinals" = "cuartos", "cuartos" = "cuartos",
+  "quarter final" = "cuartos", "quarterfinals" = "cuartos", "cuartos" = "cuartos",
   "cuartos de final" = "cuartos",
-  "semi-final" = "semifinal", "semifinals" = "semifinal", "semifinal" = "semifinal",
-  "third place" = "tercer_lugar", "third-place" = "tercer_lugar",
-  "tercer lugar" = "tercer_lugar",
+  "semi final" = "semifinal", "semifinals" = "semifinal", "semifinal" = "semifinal",
+  "match for third place" = "tercer_lugar", "third place" = "tercer_lugar",
+  "third-place" = "tercer_lugar", "tercer lugar" = "tercer_lugar",
   "final" = "final"
 )
 
@@ -78,9 +82,10 @@ escribir_csv_atomico <- function(df, destino) {
 }
 
 # NOTA: preserva digitos ([^a-z0-9 ]), a diferencia de la version usada para
-# nombres de equipo (donde los digitos no aportan). Bug detectado en sesion:
-# con [^a-z ] "Round of 32" y "Round of 16" colapsaban a la misma clave
-# "round of " (sin numero), y ninguna calzaba en MAPA_FASE.
+# nombres de equipo (donde los digitos no aportan). Bug detectado en sesion
+# anterior: con [^a-z ] "Round of 32" y "Round of 16" colapsaban a la misma
+# clave "round of " (sin numero), y ninguna calzaba en MAPA_FASE. "Matchday N"
+# tambien depende de preservar el digito para no colapsar todas las jornadas.
 clave_nombre <- function(x) {
   x |>
     stringr::str_to_lower() |>
@@ -89,47 +94,83 @@ clave_nombre <- function(x) {
     stringr::str_squish()
 }
 
+# "Matchday N" (grupos) no tiene entrada literal en MAPA_FASE (serian 17
+# entradas identicas); se detecta por patron antes del lookup.
 normalizar_fase <- function(x) {
   clave <- clave_nombre(x)
+  es_jornada <- stringr::str_detect(clave, "^matchday [0-9]+$")
   out <- unname(MAPA_FASE[clave])
+  out[es_jornada] <- "grupos"
   out[is.na(out)] <- "sin_clasificar"
   out
 }
 
-# ---- Fuente primaria: worldfootballR / FBref ----
-intentar_fbref <- function() {
+# ---- Fuente primaria: openfootball/worldcup.json ----
+intentar_openfootball <- function() {
   tryCatch({
-    if (!requireNamespace("worldfootballR", quietly = TRUE)) stop("worldfootballR no disponible")
-    urls <- worldfootballR::fb_match_urls(
-      country = "", gender = "M", season_end_year = SEASON_END_YEAR, tier = "",
-      non_dom_league_url = URL_FBREF_WC
-    )
-    if (length(urls) == 0) stop("fb_match_urls no devolvio partidos")
-    Sys.sleep(PAUSA_SCRAPE)
-    res <- worldfootballR::fb_match_results(
-      country = "", gender = "M", season_end_year = SEASON_END_YEAR, tier = "",
-      non_dom_league_url = URL_FBREF_WC
-    )
-    if (is.null(res) || nrow(res) == 0) stop("fb_match_results vacio")
+    raw <- jsonlite::fromJSON(URL_OPENFOOTBALL, simplifyDataFrame = TRUE)
+    partidos_raw <- raw$matches
+    if (is.null(partidos_raw) || nrow(partidos_raw) == 0) stop("worldcup.json sin partidos")
 
-    res <- janitor::clean_names(res)
+    # score es un data.frame (columnas ft/ht/p/et), cada una lista-de-vectores
+    # length-2 o NULL si el partido no se ha jugado (bracket con placeholders
+    # tipo "1A", "W74", etc.). Confirmado empiricamente: score$ft es
+    # List of N con elementos int[1:2] o NULL, no una matriz simplificada.
+    ft_list <- partidos_raw$score$ft
+    tiene_score <- vapply(ft_list, function(x) !is.null(x) && length(x) == 2 && !anyNA(x), logical(1))
+    if (!any(tiene_score)) stop("worldcup.json: ningun partido con marcador aun")
+
+    ft <- do.call(rbind, ft_list[tiene_score])
+    jugados <- partidos_raw[tiene_score, ]
+
     tibble::tibble(
-      fecha         = as.character(res$date),
-      fase          = normalizar_fase(res$round),
-      local_nombre  = res$home,
-      visita_nombre = res$away,
-      gf_local      = suppressWarnings(as.integer(res$home_goals)),
-      gf_visita     = suppressWarnings(as.integer(res$away_goals)),
-      sede          = as.character(res$venue)
-    ) |>
-      dplyr::filter(!is.na(gf_local), !is.na(gf_visita))
+      fecha         = as.character(jugados$date),
+      fase          = normalizar_fase(jugados$round),
+      local_nombre  = as.character(jugados$team1),
+      visita_nombre = as.character(jugados$team2),
+      gf_local      = as.integer(ft[, 1]),
+      gf_visita     = as.integer(ft[, 2]),
+      sede          = as.character(jugados$ground %||% NA_character_)
+    )
   }, error = function(e) {
-    log_msg(paste("Fuente FBref fallo:", conditionMessage(e)), "WARN", "32_resultados")
+    log_msg(paste("Fuente openfootball fallo:", conditionMessage(e)), "WARN", "32_resultados")
     NULL
   })
 }
 
-# ---- Fuente de respaldo: dataset CC0 (GitHub raw) ----
+# ---- Validacion cruzada: thestatsapi.com (calendario, sin marcador) ----
+# Solo confirma que un partido existe (fecha, equipos); no aporta gf/gc.
+# Si falla, no bloquea el pipeline (es validacion, no fuente de datos).
+validar_contra_thestatsapi <- function(partidos_openfootball) {
+  tryCatch({
+    fixtures <- readr::read_csv(URL_THESTATSAPI, show_col_types = FALSE) |>
+      janitor::clean_names()
+    # Comparar por codigo_fifa (via mapear_codigo(), ya definido mas abajo en
+    # el flujo principal), no por texto: las fuentes difieren en nomenclatura
+    # (czechia/czech republic, usa/united states, etc.) sin ser un error de
+    # dato. El bracket sin resolver (placeholders "w83" vs "winner match 83")
+    # nunca calza como texto y se excluye de ambos lados.
+    cod_of  <- mapear_codigo(partidos_openfootball$local_nombre)
+    cod_api <- mapear_codigo(fixtures$home_team)
+    cod_of  <- cod_of[!is.na(cod_of)]
+    cod_api <- cod_api[!is.na(cod_api)]
+    n_solo_of  <- length(setdiff(cod_of, cod_api))
+    n_solo_api <- length(setdiff(cod_api, cod_of))
+    if (n_solo_of > 0 || n_solo_api > 0) {
+      log_msg(sprintf(
+        "Validacion cruzada thestatsapi: %d equipos locales solo en openfootball, %d solo en fixtures (esperado si el bracket aun no resuelve todos los cruces; no bloquea).",
+        n_solo_of, n_solo_api), "WARN", "32_resultados")
+    } else {
+      log_msg("Validacion cruzada thestatsapi: universo de equipos locales coincide.", "INFO", "32_resultados")
+    }
+  }, error = function(e) {
+    log_msg(paste("Validacion cruzada thestatsapi fallo (no bloquea):", conditionMessage(e)),
+            "WARN", "32_resultados")
+  })
+  invisible(NULL)
+}
+
+# ---- Fuente de ultima instancia: dataset CC0 (posible sintetico) ----
 intentar_fallback <- function() {
   tryCatch({
     df <- readr::read_csv(URL_FALLBACK_CC0, show_col_types = FALSE)
@@ -155,27 +196,16 @@ intentar_fallback <- function() {
   })
 }
 
-# ---- Flujo principal ----
-log_msg("Iniciando ingesta de resultados del torneo", "INFO", "32_resultados")
-
-maestro <- readr::read_csv(ARCHIVO_MAESTRO, col_types = readr::cols(.default = readr::col_character())) |>
-  janitor::clean_names() |>
-  dplyr::mutate(clave_en = clave_nombre(equipo_en), clave_es = clave_nombre(equipo_es))
-
-partidos_raw <- intentar_fbref()
-fuente_usada <- "fbref"
-if (is.null(partidos_raw)) {
-  log_msg("Fallback activado: usando dataset CC0 de respaldo.", "WARN", "32_resultados")
-  partidos_raw <- intentar_fallback()
-  fuente_usada <- "fallback_cc0"
-}
-
-if (is.null(partidos_raw) || nrow(partidos_raw) == 0) {
-  stop("Ambas fuentes de resultados fallaron. Pipeline detenido: no se inventan resultados.",
-       call. = FALSE)
-}
-
 # ---- Mapeo de nombres de equipo a codigo_fifa (alias + clave en/es) ----
+# openfootball usa nombres en ingles ligeramente distintos a fb_match_results
+# (p.ej. "Bosnia & Herzegovina" con "&", "South Korea" en vez de "Korea
+# Republic"); clave_nombre() normaliza el "&" a espacio, cubierto por el
+# alias existente "bosnia and herzegovina". Definido antes del flujo
+# principal porque validar_contra_thestatsapi() lo usa para comparar por
+# codigo_fifa, no por texto crudo entre fuentes. maestro (usado dentro de
+# mapear_codigo) se crea al inicio del flujo principal, pero la funcion solo
+# se EJECUTA despues de esa asignacion, asi que el orden de definicion aqui
+# es valido en R (closures resuelven variables libres en tiempo de llamada).
 ALIAS_CODIGO <- c(
   "south korea" = "KOR", "korea republic" = "KOR",
   "czechia" = "CZE", "czech republic" = "CZE",
@@ -188,7 +218,7 @@ ALIAS_CODIGO <- c(
   "democratic republic of the congo" = "COD",
   "saudi arabia" = "KSA",
   "turkey" = "TUR", "turkiye" = "TUR",
-  "bosnia and herzegovina" = "BIH"
+  "bosnia and herzegovina" = "BIH", "bosnia herzegovina" = "BIH"
 )
 
 mapear_codigo <- function(nombres) {
@@ -197,6 +227,29 @@ mapear_codigo <- function(nombres) {
   idx_en <- match(clave, maestro$clave_en)
   idx_es <- match(clave, maestro$clave_es)
   dplyr::coalesce(por_alias, maestro$codigo_fifa[idx_en], maestro$codigo_fifa[idx_es])
+}
+
+# ---- Flujo principal ----
+log_msg("Iniciando ingesta de resultados del torneo", "INFO", "32_resultados")
+
+maestro <- readr::read_csv(ARCHIVO_MAESTRO, col_types = readr::cols(.default = readr::col_character())) |>
+  janitor::clean_names() |>
+  dplyr::mutate(clave_en = clave_nombre(equipo_en), clave_es = clave_nombre(equipo_es))
+
+partidos_raw <- intentar_openfootball()
+fuente_usada <- "openfootball"
+if (is.null(partidos_raw)) {
+  log_msg("Fallback activado: usando dataset CC0 de respaldo. ADVERTENCIA: puede contener datos sinteticos, no reales.",
+          "WARN", "32_resultados")
+  partidos_raw <- intentar_fallback()
+  fuente_usada <- "fallback_cc0_sintetico"
+} else {
+  validar_contra_thestatsapi(partidos_raw)
+}
+
+if (is.null(partidos_raw) || nrow(partidos_raw) == 0) {
+  stop("Todas las fuentes de resultados fallaron. Pipeline detenido: no se inventan resultados.",
+       call. = FALSE)
 }
 
 partidos <- partidos_raw |>
@@ -223,6 +276,10 @@ if (n_descartados > 0) {
 }
 if (any(partidos$fase == "sin_clasificar")) {
   log_msg("Hay partidos con fase sin clasificar; revisar MAPA_FASE.", "WARN", "32_resultados")
+}
+if (fuente_usada == "fallback_cc0_sintetico") {
+  log_msg("*** ATENCION: pipeline corrio con fuente_usada = fallback_cc0_sintetico. Los resultados publicados podrian NO ser reales. Revisar antes de publicar. ***",
+          "WARN", "32_resultados")
 }
 
 # ---- Escritura atomica ----
