@@ -6,7 +6,8 @@
 #   40_salidas/rating_equipos.csv, rating_confederaciones.csv,
 #   rating_confederaciones_compuesto.csv, rating_confederaciones_elo.csv,
 #   historial_partidos.csv, historial_partidos_compuesto.csv,
-#   historial_partidos_elo.csv, fuerza_equipos.csv
+#   historial_partidos_elo.csv, fuerza_equipos.csv, variantes_equipos.json,
+#   variantes_confederaciones.json (P18: localia anfitrion x goles agresivo)
 # Salidas: 40_salidas/datos_interfaz.json
 # Autor: pipeline mundial2026_confederaciones
 # Fecha: 2026-07-02
@@ -35,6 +36,8 @@ ruta_historial <- here::here("40_salidas", "historial_partidos.csv")
 ruta_hist_comp <- here::here("40_salidas", "historial_partidos_compuesto.csv")
 ruta_hist_elo  <- here::here("40_salidas", "historial_partidos_elo.csv")
 ruta_salida    <- here::here("40_salidas", "datos_interfaz.json")
+ruta_var_eq    <- here::here("40_salidas", "variantes_equipos.json")
+ruta_var_conf  <- here::here("40_salidas", "variantes_confederaciones.json")
 
 # ---- Constantes y parametros ----
 FECHA_ACTUALIZACION <- "2026-07-02"
@@ -71,6 +74,8 @@ historial <- read_csv(ruta_historial, col_types = cols(codigo = col_character(),
 hist_comp <- read_csv(ruta_hist_comp, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
 hist_elo  <- read_csv(ruta_hist_elo, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
 fuerza    <- read_csv(ruta_fuerza, col_types = cols(codigo_fifa = col_character(), fuente_fuerza = col_character(), .default = col_guess()))
+variantes_equipos_raw <- jsonlite::fromJSON(ruta_var_eq, simplifyDataFrame = FALSE)
+variantes_conf_raw    <- jsonlite::fromJSON(ruta_var_conf, simplifyDataFrame = FALSE)
 
 # P8: fuente_fuerza leida de fuerza_equipos.csv (unica fuente de verdad).
 # La columna debe ser constante en las 48 filas (misma corrida de 31);
@@ -88,7 +93,11 @@ stopifnot(
   "conf debe tener 6 confederaciones" = nrow(conf) == 6,
   "conf_comp debe tener 6 confederaciones" = nrow(conf_comp) == 6,
   "conf_elo debe tener 6 confederaciones" = nrow(conf_elo) == 6,
-  "hist_comp y hist_elo deben tener igual numero de filas" = nrow(hist_comp) == nrow(hist_elo)
+  "hist_comp y hist_elo deben tener igual numero de filas" = nrow(hist_comp) == nrow(hist_elo),
+  "variantes_equipos debe tener 12 claves" = length(variantes_equipos_raw) == 12L,
+  "variantes_confederaciones debe tener 12 claves" = length(variantes_conf_raw) == 12L,
+  "variantes_equipos y variantes_confederaciones deben tener las mismas claves" =
+    setequal(names(variantes_equipos_raw), names(variantes_conf_raw))
 )
 if (anyNA(rating$rating_actual)) warning("NAs detectados en rating_actual")
 
@@ -245,7 +254,13 @@ salida <- list(
   confederaciones = confederaciones_json,
   confederaciones_compuesto = confederaciones_compuesto_json,
   confederaciones_elo = confederaciones_elo_json,
-  equipos = equipos_json
+  equipos = equipos_json,
+  # P18: 12 combinaciones (3 fuentes x goles normal/agresivo x localia
+  # sin/con bonus de pais anfitrion), pasadas tal cual desde el JSON
+  # intermedio de 33_motor_elo.R (ya vienen en shape lista-por-fila,
+  # compatible directo con jsonlite::write_json sin transformacion).
+  variantes_equipos = variantes_equipos_raw,
+  variantes_confederaciones = variantes_conf_raw
 )
 
 # 8. Validacion final de shape antes de escribir
@@ -253,7 +268,9 @@ stopifnot(
   "equipos debe tener 48 elementos" = length(salida$equipos) == 48,
   "confederaciones debe tener 6 elementos" = length(salida$confederaciones) == 6,
   "confederaciones_compuesto debe tener 6 elementos" = length(salida$confederaciones_compuesto) == 6,
-  "confederaciones_elo debe tener 6 elementos" = length(salida$confederaciones_elo) == 6
+  "confederaciones_elo debe tener 6 elementos" = length(salida$confederaciones_elo) == 6,
+  "variantes_equipos debe tener 12 claves en la salida final" = length(salida$variantes_equipos) == 12L,
+  "variantes_confederaciones debe tener 12 claves en la salida final" = length(salida$variantes_confederaciones) == 12L
 )
 
 # 9. Escritura atomica
@@ -261,6 +278,7 @@ escribir_json_atomico(salida, ruta_salida)
 
 # 10. Resumen
 message(sprintf(
-  "[39_reporte] OK: %d equipos, %d confederaciones, fuente_fuerza='%s', delta_conf 3 fuentes en historial -> %s",
-  length(salida$equipos), length(salida$confederaciones), FUENTE_FUERZA_ACTUAL, ruta_salida
+  "[39_reporte] OK: %d equipos, %d confederaciones, fuente_fuerza='%s', delta_conf 3 fuentes en historial, %d variantes P18 (equipo+confederacion) -> %s",
+  length(salida$equipos), length(salida$confederaciones), FUENTE_FUERZA_ACTUAL,
+  length(salida$variantes_equipos), ruta_salida
 ))
