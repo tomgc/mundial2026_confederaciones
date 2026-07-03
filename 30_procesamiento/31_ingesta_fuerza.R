@@ -63,10 +63,23 @@ escribir_csv_atomico <- function(df, destino) {
 }
 
 # ---- Normalizacion a escala 0-100 (min-max sobre los 48) ----
+# P11: el minimo absoluto de la distribucion (ej. NZL en FIFA, unico
+# equipo OFC) recibia fuerza_base = 0 exacto. Un rating inicial de cero
+# genera We (probabilidad esperada) cercano a cero en todo cruce
+# inter-confederacion, produciendo sorpresa maxima artificial ante
+# cualquier resultado no-perdedor. Piso minimo: tras el min-max, ningun
+# valor baja del percentil PISO_FUERZA_PCTL de la propia distribucion ya
+# normalizada, evitando el cero exacto sin renormalizar la escala de los
+# demas 47 equipos (decision: piso acotado, no renormalizacion global;
+# ver 50_documentacion/activa/decisiones/20260703_decision_ofc_rating_inicial_cero.md).
+PISO_FUERZA_PCTL <- 0.05
+
 escala_0_100 <- function(x) {
   rango <- range(x, na.rm = TRUE)
   if (diff(rango) == 0) return(rep(50, length(x)))
-  100 * (x - rango[1]) / diff(rango)
+  normalizado <- 100 * (x - rango[1]) / diff(rango)
+  piso <- stats::quantile(normalizado, probs = PISO_FUERZA_PCTL, na.rm = TRUE, names = FALSE, type = 7)
+  pmax(normalizado, piso)
 }
 
 # ---- Flujo principal ----

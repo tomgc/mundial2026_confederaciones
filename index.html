@@ -136,6 +136,7 @@
   .card-conf .cab{display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line-soft); padding-bottom:10px}
   .card-conf .cab .nombre{font-size:15px; font-weight:700; letter-spacing:.01em}
   .card-conf .cab .neq{margin-left:auto; font-size:11px; color:var(--muted)}
+  .nota-1eq{cursor:help; color:var(--header); font-weight:700}
   .card-conf .linea-rating{display:flex; align-items:baseline; gap:8px; margin:13px 0 2px; flex-wrap:wrap}
   .card-conf .ini{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
   .card-conf .flecha{font-size:13px; color:var(--muted)}
@@ -148,6 +149,7 @@
 
   .pd-wrap{margin-top:14px; padding-top:12px; border-top:1px solid var(--line)}
   .pd-titulo{font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--muted); margin-bottom:8px; text-transform:uppercase}
+  .pd-nota{font-size:11px; color:var(--muted); margin-bottom:8px; font-style:italic}
   .pd-lista{list-style:none; margin:0 0 6px; padding:0}
   .pd-lista li{font-size:12px; color:var(--ink); line-height:1.5; padding:3px 0; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap}
   .pd-fase{color:var(--muted); font-size:11px}
@@ -429,7 +431,7 @@
     </div>
 
     <h3>Limitaciones conocidas</h3>
-    <p>Confederaciones con una sola selección (caso OFC) no tienen forma de diluir un resultado atípico entre varios equipos: el rating de la confederación es, en la práctica, el rating de esa única selección. Además, una fuerza inicial muy baja (equipo en el extremo inferior del rango de fuerza) puede generar sorpresas desproporcionadas incluso ante resultados modestos, porque la expectativa previa ya era casi nula.</p>
+    <p>Confederaciones con una sola selección (caso OFC, marcado con * junto al conteo de selecciones) no tienen forma de diluir un resultado atípico entre varios equipos: el rating de la confederación es, en la práctica, el rating de esa única selección. Adicionalmente, el modelo aplica un piso mínimo a la fuerza inicial de cada equipo (percentil 5 de la distribución, en vez de permitir un cero exacto en el extremo inferior del rango), para evitar que una expectativa previa casi nula genere sorpresas desproporcionadas ante resultados modestos.</p>
   </div>
 </details>
 
@@ -813,11 +815,12 @@ function pintarGridConf(){
     const seccionPartidos = (positivos.length || negativos.length) ?
       `<div class="pd-wrap">`+
         `<div class="pd-titulo">Qué explica este resultado</div>`+
+        `<div class="pd-nota">Sedes neutrales: el orden del marcador no indica local ni visitante.</div>`+
         (positivos.length ? `<ul class="pd-lista pd-pos">${positivos.map(filaPartidoHtml).join("")}</ul>` : "")+
         (negativos.length ? `<ul class="pd-lista pd-neg">${negativos.map(filaPartidoHtml).join("")}</ul>` : "")+
       `</div>` : "";
     card.innerHTML =
-      `<div class="cab">${dotHtml(c.id,11)}<span class="nombre">${esc(c.id)}</span><span class="neq">${c.n_equipos} selecciones</span></div>`+
+      `<div class="cab">${dotHtml(c.id,11)}<span class="nombre">${esc(c.id)}</span><span class="neq">${c.n_equipos} selecci${c.n_equipos===1?"ón":"ones"}${c.n_equipos===1?` <span class="nota-1eq" title="Con una sola selección, el rating de la confederación equivale al de ese equipo: no hay forma de diluir un resultado atípico entre varios países.">*</span>`:""}</span></div>`+
       `<div class="linea-rating">`+
         `<span class="ini">${Number(c.rating_inicial).toFixed(1)}</span>`+
         `<span class="flecha">→</span>`+
