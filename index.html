@@ -261,6 +261,7 @@
         <div class="toggle-fuerza" role="group" aria-label="Fuente de fuerza base">
           <button id="btn-fuerza-fifa" class="activo" aria-pressed="true">FIFA</button>
           <button id="btn-fuerza-compuesto" aria-pressed="false">Compuesto</button>
+          <button id="btn-fuerza-elo" aria-pressed="false">Elo</button>
         </div>
       </div>
       <div class="barras-layout">
@@ -568,11 +569,21 @@ function generarMock(){
       obs_vs_esp:r1(c.obs_vs_esp*f), transfer_neto:r1(c.transfer_neto*f)};
   });
 
+  // Variante bajo fuerza_elo (100%): mismo enfoque que compuesto.
+  const FACTOR_MOCK_ELO = {UEFA:0.6, AFC:1.4, CAF:1.5, CONMEBOL:-1.1, CONCACAF:0.3, OFC:1.0};
+  const confederaciones_elo = confederaciones.map(c=>{
+    const f = FACTOR_MOCK_ELO[c.id] ?? 1;
+    const delta = r1(c.delta*f);
+    return {...c, delta, rating_actual:r1(c.rating_inicial+delta),
+      obs_vs_esp:r1(c.obs_vs_esp*f), transfer_neto:r1(c.transfer_neto*f)};
+  });
+
   // ----- Salida con el shape del contrato -----
   const salida = {
     meta:{torneo:"Mundial 2026", actualizado:"2026-07-02", fuente_fuerza:"compuesto (MOCK)"},
     confederaciones,
     confederaciones_compuesto,
+    confederaciones_elo,
     equipos: equipos.map(t=>({
       codigo:t.codigo, nombre:t.nombre, confederacion:t.confederacion, grupo:t.grupo,
       pos_fifa:t.pos_fifa, puntos_fifa:t.puntos_fifa, elo:t.elo,
@@ -658,6 +669,13 @@ const METODO_TEXTO = {
       "Combina el ranking FIFA con el rating Elo (más sensible a forma reciente) en una proporción 60/40.",
       "Al incorporar Elo, la expectativa de resultado (We) cambia para varios cruces, lo que redistribuye cuánta 'sorpresa' aporta cada partido al cambio de rating."
     ]
+  },
+  elo: {
+    titulo: "Fuerza base: Elo (100%)",
+    parrafos: [
+      "Usa únicamente el rating Elo (eloratings.net, snapshot previo al torneo) como fuente de fuerza inicial, sin ponderar el ranking FIFA.",
+      "Elo captura forma reciente de manera más directa que FIFA; la expectativa de cada cruce depende solo de esa fuente."
+    ]
   }
 };
 
@@ -667,19 +685,20 @@ function pintarPanelMetodo(){
     `<h3>${esc(t.titulo)}</h3>` + t.parrafos.map(p=>`<p>${esc(p)}</p>`).join("");
 }
 
+const CAMPO_JSON_POR_FUENTE = {fifa:"confederaciones", compuesto:"confederaciones_compuesto", elo:"confederaciones_elo"};
+
 function confsActivas(){
-  if(FUENTE_GRAFICO==="compuesto" && Array.isArray(DATOS.confederaciones_compuesto)){
-    return DATOS.confederaciones_compuesto;
-  }
-  return DATOS.confederaciones;
+  const campo = CAMPO_JSON_POR_FUENTE[FUENTE_GRAFICO];
+  return Array.isArray(DATOS[campo]) ? DATOS[campo] : DATOS.confederaciones;
 }
 
 function pintarToggleFuerza(){
-  const bf=$("#btn-fuerza-fifa"), bc=$("#btn-fuerza-compuesto");
-  bf.classList.toggle("activo", FUENTE_GRAFICO==="fifa");
-  bc.classList.toggle("activo", FUENTE_GRAFICO==="compuesto");
-  bf.setAttribute("aria-pressed", FUENTE_GRAFICO==="fifa");
-  bc.setAttribute("aria-pressed", FUENTE_GRAFICO==="compuesto");
+  Object.keys(CAMPO_JSON_POR_FUENTE).forEach(f=>{
+    const btn = $(`#btn-fuerza-${f}`);
+    const activo = FUENTE_GRAFICO===f;
+    btn.classList.toggle("activo", activo);
+    btn.setAttribute("aria-pressed", activo);
+  });
 }
 
 function initConfeds(){
@@ -707,8 +726,9 @@ function initConfeds(){
   pintarPanelMetodo();
   pintarToggleFuerza();
   if(!initConfeds._listo){
-    $("#btn-fuerza-fifa").addEventListener("click",()=>cambiarFuenteGrafico("fifa"));
-    $("#btn-fuerza-compuesto").addEventListener("click",()=>cambiarFuenteGrafico("compuesto"));
+    Object.keys(CAMPO_JSON_POR_FUENTE).forEach(f=>{
+      $(`#btn-fuerza-${f}`).addEventListener("click",()=>cambiarFuenteGrafico(f));
+    });
     initConfeds._listo = true;
   }
 }

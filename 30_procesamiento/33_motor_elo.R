@@ -17,6 +17,8 @@
 #            40_salidas/rating_confederaciones.csv (nivel 2, bajo FUENTE_FUERZA activa)
 #            40_salidas/rating_confederaciones_compuesto.csv (nivel 2, bajo
 #              fuerza_base_compuesto siempre, para el toggle FIFA/Compuesto del sitio)
+#            40_salidas/rating_confederaciones_elo.csv (nivel 2, bajo
+#              fuerza_elo siempre, tercer boton del toggle del sitio)
 # Autor:     [tu nombre]
 # Fecha:     2026-07-02
 # ============================================================================
@@ -44,6 +46,7 @@ ARCHIVO_RATING_EQUIPOS  <- ruta_salidas("rating_equipos.csv")
 ARCHIVO_HISTORIAL       <- ruta_salidas("historial_partidos.csv")
 ARCHIVO_RATING_CONF     <- ruta_salidas("rating_confederaciones.csv")
 ARCHIVO_RATING_CONF_COMPUESTO <- ruta_salidas("rating_confederaciones_compuesto.csv")
+ARCHIVO_RATING_CONF_ELO <- ruta_salidas("rating_confederaciones_elo.csv")
 
 # Escalera de fases del torneo, en orden de ejecucion. Toda fase fuera de
 # "grupos" es eliminacion directa (empate exige desempate real).
@@ -361,6 +364,7 @@ simular_confederaciones <- function(fuerza_tbl, columna_fuerza) {
 }
 
 rating_confederaciones_compuesto <- simular_confederaciones(fuerza, "fuerza_base_compuesto")
+rating_confederaciones_elo <- simular_confederaciones(fuerza, "fuerza_base_elo_toggle")
 
 # ---- Validacion de integridad (politica C.8) ----
 stopifnot(
@@ -368,7 +372,8 @@ stopifnot(
   !anyDuplicated(rating_equipos$codigo_fifa),
   all(!is.na(rating_equipos$rating_actual)),
   nrow(rating_confederaciones) == dplyr::n_distinct(fuerza$confederacion),
-  nrow(rating_confederaciones_compuesto) == dplyr::n_distinct(fuerza$confederacion)
+  nrow(rating_confederaciones_compuesto) == dplyr::n_distinct(fuerza$confederacion),
+  nrow(rating_confederaciones_elo) == dplyr::n_distinct(fuerza$confederacion)
 )
 
 # ---- Escritura atomica ----
@@ -376,6 +381,7 @@ escribir_csv_atomico(rating_equipos, ARCHIVO_RATING_EQUIPOS)
 escribir_csv_atomico(historial_partidos, ARCHIVO_HISTORIAL)
 escribir_csv_atomico(rating_confederaciones, ARCHIVO_RATING_CONF)
 escribir_csv_atomico(rating_confederaciones_compuesto, ARCHIVO_RATING_CONF_COMPUESTO)
+escribir_csv_atomico(rating_confederaciones_elo, ARCHIVO_RATING_CONF_ELO)
 
 log_msg(sprintf("Motor completado: %d equipos, %d partidos, %d filas de historial, %d pendientes de resolucion. Confederaciones (fifa y compuesto) escritas.",
                 nrow(rating_equipos), nrow(orden_partidos), nrow(historial_partidos), n_pendientes),

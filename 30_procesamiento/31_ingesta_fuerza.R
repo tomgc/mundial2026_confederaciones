@@ -131,6 +131,8 @@ tabla <- tabla |>
     # confederaciones bajo ambos criterios.
     fuerza_base_compuesto = PESO_COMPUESTO[["fifa"]] * fuerza_fifa +
                              PESO_COMPUESTO[["elo"]]  * fuerza_elo,
+    # Tercer boton del toggle: 100% Elo, siempre calculado.
+    fuerza_base_elo_toggle = fuerza_elo,
     # P8: fuente_fuerza persistida en la salida (fuente unica de verdad).
     # 39_reporte.R la lee de aqui en vez de redeclarar una constante propia,
     # eliminando el riesgo de desincronizacion entre dos scripts.

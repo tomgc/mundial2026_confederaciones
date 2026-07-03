@@ -4,7 +4,8 @@
 #   cumpliendo el shape exacto del contrato (meta, confederaciones[], equipos[].historial[]).
 # Insumos: 20_insumos/equipos_mundial2026.csv, ranking_fifa_20260611.csv, elo_20260702.csv;
 #   40_salidas/rating_equipos.csv, rating_confederaciones.csv,
-#   rating_confederaciones_compuesto.csv, historial_partidos.csv, fuerza_equipos.csv
+#   rating_confederaciones_compuesto.csv, rating_confederaciones_elo.csv,
+#   historial_partidos.csv, fuerza_equipos.csv
 # Salidas: 40_salidas/datos_interfaz.json
 # Autor: pipeline mundial2026_confederaciones
 # Fecha: 2026-07-02
@@ -28,6 +29,7 @@ ruta_rating    <- here::here("40_salidas", "rating_equipos.csv")
 ruta_fuerza    <- here::here("40_salidas", "fuerza_equipos.csv")
 ruta_conf      <- here::here("40_salidas", "rating_confederaciones.csv")
 ruta_conf_comp <- here::here("40_salidas", "rating_confederaciones_compuesto.csv")
+ruta_conf_elo  <- here::here("40_salidas", "rating_confederaciones_elo.csv")
 ruta_historial <- here::here("40_salidas", "historial_partidos.csv")
 ruta_salida    <- here::here("40_salidas", "datos_interfaz.json")
 
@@ -61,6 +63,7 @@ elo       <- read_csv(ruta_elo, col_types = cols(codigo_fifa = col_character(), 
 rating    <- read_csv(ruta_rating, col_types = cols(codigo_fifa = col_character(), .default = col_guess()))
 conf      <- read_csv(ruta_conf, col_types = cols(.default = col_guess()))
 conf_comp <- read_csv(ruta_conf_comp, col_types = cols(.default = col_guess()))
+conf_elo  <- read_csv(ruta_conf_elo, col_types = cols(.default = col_guess()))
 historial <- read_csv(ruta_historial, col_types = cols(codigo = col_character(), rival = col_character(), .default = col_guess()))
 fuerza    <- read_csv(ruta_fuerza, col_types = cols(codigo_fifa = col_character(), fuente_fuerza = col_character(), .default = col_guess()))
 
@@ -78,7 +81,8 @@ stopifnot(
   "elo debe tener 48 equipos" = nrow(elo) == 48,
   "rating debe tener 48 equipos" = nrow(rating) == 48,
   "conf debe tener 6 confederaciones" = nrow(conf) == 6,
-  "conf_comp debe tener 6 confederaciones" = nrow(conf_comp) == 6
+  "conf_comp debe tener 6 confederaciones" = nrow(conf_comp) == 6,
+  "conf_elo debe tener 6 confederaciones" = nrow(conf_elo) == 6
 )
 if (anyNA(rating$rating_actual)) warning("NAs detectados en rating_actual")
 
@@ -193,6 +197,19 @@ confederaciones_compuesto_json <- conf_comp |>
   ) |>
   purrr::transpose()
 
+# Mismo shape, bajo fuerza_elo (tercer boton del toggle del sitio).
+confederaciones_elo_json <- conf_elo |>
+  transmute(
+    id = confederacion,
+    rating_inicial = r1(rating_inicial),
+    rating_actual = r1(rating_actual),
+    delta = r1(delta),
+    obs_vs_esp = r1(obs_vs_esp),
+    transfer_neto = r1(transfer_neto),
+    n_equipos = n_equipos
+  ) |>
+  purrr::transpose()
+
 # 7. Ensamblaje final segun contrato (index.html linea 541 en adelante)
 salida <- list(
   meta = list(
@@ -202,6 +219,7 @@ salida <- list(
   ),
   confederaciones = confederaciones_json,
   confederaciones_compuesto = confederaciones_compuesto_json,
+  confederaciones_elo = confederaciones_elo_json,
   equipos = equipos_json
 )
 
@@ -209,7 +227,8 @@ salida <- list(
 stopifnot(
   "equipos debe tener 48 elementos" = length(salida$equipos) == 48,
   "confederaciones debe tener 6 elementos" = length(salida$confederaciones) == 6,
-  "confederaciones_compuesto debe tener 6 elementos" = length(salida$confederaciones_compuesto) == 6
+  "confederaciones_compuesto debe tener 6 elementos" = length(salida$confederaciones_compuesto) == 6,
+  "confederaciones_elo debe tener 6 elementos" = length(salida$confederaciones_elo) == 6
 )
 
 # 9. Escritura atomica
