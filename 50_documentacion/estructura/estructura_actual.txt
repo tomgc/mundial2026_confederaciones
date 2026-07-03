@@ -1,6 +1,6 @@
 Raiz: /Users/tomgc/Projects/mundial2026_confederaciones
-Fecha: 2026-07-02 21:47:32
-Totales: 16 carpetas, 39 archivos
+Fecha: 2026-07-02 22:10:50
+Totales: 16 carpetas, 43 archivos
 
 ============================================================
 ARBOL
@@ -18,8 +18,9 @@ ARBOL
   31_ingesta_fuerza.R  (5.78K)
   32_ingesta_resultados.R  (9.34K)
   33_motor_elo.R  (13.5K)
-  39_reporte.R  (535)
+  39_reporte.R  (6.97K)
 40_salidas/
+  datos_interfaz.json  (55.3K)
   fuerza_equipos.csv  (4.7K)
   historial_partidos.csv  (14.1K)
   rating_confederaciones.csv  (342)
@@ -27,6 +28,7 @@ ARBOL
   resultados_partidos.csv  (7.15K)
 50_documentacion/
   activa/
+    backlog_acumulativo.md  (4.78K)
     decisiones/
       assets/
         fonts/
@@ -41,13 +43,15 @@ ARBOL
     SETTINGS_Y_PROMPTS_OPERACIONALES.md  (62.9K)
   andamios/
   estructura/
-    20260702_195155_estructura.md  (1.28K)
-    20260702_195155_estructura.txt  (1.28K)
     20260702_200343_estructura.md  (1.71K)
     20260702_200343_estructura.txt  (1.7K)
-    estructura_actual.md  (1.71K)
-    estructura_actual.txt  (1.7K)
+    20260702_214732_estructura.md  (1.99K)
+    20260702_214732_estructura.txt  (1.98K)
+    estructura_actual.md  (1.99K)
+    estructura_actual.txt  (1.98K)
   traspasos/
+    traspaso_cierre_v01.md  (30K)
+    traspaso_cierre_v02.md  (27K)
 assets/
   fonts/
     ibm-plex-mono-300-latin.woff2  (9.88K)
@@ -64,12 +68,13 @@ tests/
 ============================================================
 CONTEO POR EXTENSION
 ============================================================
+  .md: 11
   .csv: 10
-  .md: 8
   .R: 8
   .woff2: 5
   .html: 3
   .txt: 3
   .js: 1
+  .json: 1
   .Rproj: 1
 
