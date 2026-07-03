@@ -780,6 +780,7 @@ const DELTA_CONF_CAMPO_POR_FUENTE = {fifa:"delta_conf", compuesto:"delta_conf_co
 // unicos que mueven delta_conf), bajo la fuente activa del toggle (FIFA,
 // Compuesto o Elo). Recorre DATOS.equipos, no un endpoint aparte: usa el
 // mismo historial ya cargado.
+const N_PARTIDOS_DESTACADOS = 5; // partidos mostrados por lado (positivo/negativo) en "Qué explica este resultado"
 function partidosDestacadosConf(confId){
   const campo = DELTA_CONF_CAMPO_POR_FUENTE[FUENTE_GRAFICO];
   const partidos=[];
@@ -791,8 +792,8 @@ function partidosDestacadosConf(confId){
       }
     });
   });
-  const positivos=[...partidos].sort((a,b)=>b.delta_conf-a.delta_conf).slice(0,2);
-  const negativos=[...partidos].sort((a,b)=>a.delta_conf-b.delta_conf).slice(0,2);
+  const positivos=[...partidos].sort((a,b)=>b.delta_conf-a.delta_conf).slice(0,N_PARTIDOS_DESTACADOS);
+  const negativos=[...partidos].sort((a,b)=>a.delta_conf-b.delta_conf).slice(0,N_PARTIDOS_DESTACADOS);
   return {positivos, negativos};
 }
 
