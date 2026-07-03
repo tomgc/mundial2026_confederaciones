@@ -39,3 +39,4 @@ _archivo/
 *_freeze/
 .quarto/
 30_procesamiento/90_simulacion_compuesto.R
+30_procesamiento/90_simulacion_elo.R
