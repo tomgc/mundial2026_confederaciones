@@ -156,19 +156,21 @@
   .pd-lista .signo{margin-left:auto; font-size:12px; white-space:nowrap}
 
   /* ---- Gráfico de barras divergente + panel metodológico ---- */
-  .card-barras{margin-top:22px; border:1px solid var(--line); background:var(--paper); padding:20px}
-  .card-barras-cab{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .card-barras{margin-top:22px; border:1px solid var(--line); background:var(--paper); padding:24px}
+  .card-barras-cab{display:block}
   .card-barras h2{font-size:15px; font-weight:700; margin:0}
-  .card-barras p{font-size:12px; color:var(--muted); margin:5px 0 18px}
-  .toggle-fuerza{display:inline-flex; border:1px solid var(--line); font-size:12px}
+  .card-barras p{font-size:12px; color:var(--muted); margin:5px 0 0}
+  .toggle-fuerza-wrap{display:flex; justify-content:center; margin:18px 0 20px}
+  .toggle-fuerza{display:inline-flex; align-items:center; gap:14px; border:1px solid var(--line); font-size:12px; padding:8px 18px}
+  .toggle-fuerza-sep{width:1px; align-self:stretch; background:var(--line)}
+  .toggle-fuerza-chk{display:inline-flex; align-items:center; gap:5px; cursor:pointer; color:var(--muted)}
+  .toggle-fuerza-chk input{cursor:pointer}
   .toggle-fuerza button{padding:5px 12px; border:none; background:transparent; color:var(--muted); cursor:pointer; font-family:inherit}
   .toggle-fuerza button.activo{background:var(--ink); color:var(--paper); font-weight:700}
-  .barras-layout{display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:stretch}
-  .panel-metodo{border:1px solid var(--line-soft); background:var(--bg); padding:14px 16px; font-size:12px; color:var(--ink); line-height:1.6}
+  .panel-metodo{margin-top:18px; border:1px solid var(--line-soft); background:var(--bg); padding:16px 20px; font-size:12px; color:var(--ink); line-height:1.6}
   .panel-metodo h3{font-size:12px; font-weight:700; margin:0 0 8px; letter-spacing:.02em}
   .panel-metodo p{margin:0 0 8px; color:var(--muted)}
   .panel-metodo p:last-child{margin-bottom:0}
-  @media (max-width:720px){ .barras-layout{grid-template-columns:1fr} }
 
   /* ---- Banner colapsable: metodología argumentativa (reemplaza footer) ---- */
   .banner-metodo{border-top:2px solid var(--header); background:var(--paper); margin-top:32px}
@@ -278,20 +280,21 @@
     </div>
     <div class="card-barras">
       <div class="card-barras-cab">
-        <div>
-          <h2>Cambio de rating por confederación</h2>
-          <p>Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
-        </div>
-        <div class="toggle-fuerza" role="group" aria-label="Fuente de fuerza base">
+        <h2>Cambio de rating por confederación</h2>
+        <p>Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
+      </div>
+      <div class="toggle-fuerza-wrap">
+        <div class="toggle-fuerza" role="group" aria-label="Fuente de fuerza base y variantes">
           <button id="btn-fuerza-fifa" class="activo" aria-pressed="true">FIFA</button>
           <button id="btn-fuerza-compuesto" aria-pressed="false">Compuesto</button>
           <button id="btn-fuerza-elo" aria-pressed="false">Elo</button>
+          <span class="toggle-fuerza-sep"></span>
+          <label class="toggle-fuerza-chk"><input type="checkbox" id="chk-goles-agresivo"> Goles reforzados</label>
+          <label class="toggle-fuerza-chk"><input type="checkbox" id="chk-localia-anfitrion"> Bonus anfitrión</label>
         </div>
       </div>
-      <div class="barras-layout">
-        <div id="chart-conf"></div>
-        <div class="panel-metodo" id="panel-metodo"></div>
-      </div>
+      <div id="chart-conf"></div>
+      <div class="panel-metodo" id="panel-metodo"></div>
     </div>
 
     <div class="grid-conf" id="grid-conf"></div>
@@ -726,6 +729,8 @@ function pintarCabecera(){
    VISTA — CONFEDERACIONES (tarjetas + barras SVG divergentes)
    ================================================================== */
 let FUENTE_GRAFICO = "fifa"; // toggle del grafico "Cambio de rating por confederacion"; tarjetas siempre en fifa
+let GOLES_AGRESIVO = false; // checkbox "Goles reforzados" (P18)
+let LOCALIA_ANFITRION = false; // checkbox "Bonus anfitrion" (P18)
 
 const METODO_TEXTO = {
   fifa: {
@@ -753,13 +758,38 @@ const METODO_TEXTO = {
 
 function pintarPanelMetodo(){
   const t = METODO_TEXTO[FUENTE_GRAFICO];
+  let extra = "";
+  if(GOLES_AGRESIVO) extra += `<p><strong>Goles reforzados:</strong> el margen de gol pesa el doble en la magnitud del ajuste de rating (mismo resultado V/E/D, mayor sensibilidad a goleadas).</p>`;
+  if(LOCALIA_ANFITRION) extra += `<p><strong>Bonus anfitrión:</strong> EE.UU., México y Canadá (países organizadores) reciben ${'+50'} puntos Elo de expectativa en cada cruce, sin importar la sede física del partido.</p>`;
+  if(hayVarianteActiva()) extra += `<p class="pd-nota">Con variantes activas, "Qué explica este resultado" no está disponible (el detalle por partido solo existe para el modelo base).</p>`;
   $("#panel-metodo").innerHTML =
-    `<h3>${esc(t.titulo)}</h3>` + t.parrafos.map(p=>`<p>${esc(p)}</p>`).join("");
+    `<h3>${esc(t.titulo)}</h3>` + t.parrafos.map(p=>`<p>${esc(p)}</p>`).join("") + extra;
 }
 
 const CAMPO_JSON_POR_FUENTE = {fifa:"confederaciones", compuesto:"confederaciones_compuesto", elo:"confederaciones_elo"};
 
+// P18: clave combinada del JSON de variantes (fuente_goles_localia), en el
+// mismo orden en que 33_motor_elo.R las genera. "normal"/"sin" son los
+// valores por defecto (equivalentes al contrato base sin variantes).
+function claveVarianteActiva(){
+  return `${FUENTE_GRAFICO}_${GOLES_AGRESIVO?"agresivo":"normal"}_${LOCALIA_ANFITRION?"con":"sin"}`;
+}
+
+function hayVarianteActiva(){
+  return GOLES_AGRESIVO || LOCALIA_ANFITRION;
+}
+
 function confsActivas(){
+  if(hayVarianteActiva() && DATOS.variantes_confederaciones){
+    const filas = DATOS.variantes_confederaciones[claveVarianteActiva()];
+    // Shape de R usa "confederacion", el contrato base usa "id"; se mapea
+    // aqui para reutilizar barrasConf()/pintarGridConf() sin duplicarlas.
+    return Array.isArray(filas) ? filas.map(c=>({...c, id:c.confederacion})) : confsActivasBase();
+  }
+  return confsActivasBase();
+}
+
+function confsActivasBase(){
   const campo = CAMPO_JSON_POR_FUENTE[FUENTE_GRAFICO];
   return Array.isArray(DATOS[campo]) ? DATOS[campo] : DATOS.confederaciones;
 }
@@ -782,6 +812,10 @@ const DELTA_CONF_CAMPO_POR_FUENTE = {fifa:"delta_conf", compuesto:"delta_conf_co
 // mismo historial ya cargado.
 const N_PARTIDOS_DESTACADOS = 5; // partidos mostrados por lado (positivo/negativo) en "Qué explica este resultado"
 function partidosDestacadosConf(confId){
+  // P18: el JSON de variantes solo trae agregado por confederacion, sin
+  // detalle por partido (33_motor_elo.R no lo genero para las 12
+  // combinaciones, ver plan). Bajo variante activa, se omite esta seccion.
+  if(hayVarianteActiva()) return {positivos:[], negativos:[]};
   const campo = DELTA_CONF_CAMPO_POR_FUENTE[FUENTE_GRAFICO];
   const partidos=[];
   DATOS.equipos.filter(e=>e.confederacion===confId).forEach(e=>{
@@ -852,16 +886,28 @@ function initConfeds(){
     Object.keys(CAMPO_JSON_POR_FUENTE).forEach(f=>{
       $(`#btn-fuerza-${f}`).addEventListener("click",()=>cambiarFuenteGrafico(f));
     });
+    $("#chk-goles-agresivo").addEventListener("change",e=>{
+      GOLES_AGRESIVO = e.target.checked;
+      refrescarVista();
+    });
+    $("#chk-localia-anfitrion").addEventListener("change",e=>{
+      LOCALIA_ANFITRION = e.target.checked;
+      refrescarVista();
+    });
     initConfeds._listo = true;
   }
+}
+
+function refrescarVista(){
+  pintarGridConf();
+  $("#chart-conf").innerHTML = barrasConf(confsActivas());
+  pintarPanelMetodo();
 }
 
 function cambiarFuenteGrafico(fuente){
   if(fuente===FUENTE_GRAFICO) return;
   FUENTE_GRAFICO = fuente;
-  pintarGridConf();
-  $("#chart-conf").innerHTML = barrasConf(confsActivas());
-  pintarPanelMetodo();
+  refrescarVista();
   pintarToggleFuerza();
 }
 
