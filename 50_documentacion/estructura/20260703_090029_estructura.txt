@@ -1,6 +1,6 @@
 Raiz: /Users/tomgc/Projects/mundial2026_confederaciones
-Fecha: 2026-07-02 21:47:32
-Totales: 16 carpetas, 39 archivos
+Fecha: 2026-07-03 09:00:29
+Totales: 16 carpetas, 57 archivos
 
 ============================================================
 ARBOL
@@ -15,19 +15,33 @@ ARBOL
   equipos_mundial2026.csv  (1.44K)
   ranking_fifa_20260611.csv  (744)
 30_procesamiento/
-  31_ingesta_fuerza.R  (5.78K)
-  32_ingesta_resultados.R  (9.34K)
-  33_motor_elo.R  (13.5K)
-  39_reporte.R  (535)
+  31_ingesta_fuerza.R  (6.44K)
+  32_ingesta_resultados.R  (13K)
+  33_motor_elo.R  (19.5K)
+  39_reporte.R  (11.2K)
+  90_simulacion_compuesto.R  (6.33K)
+  90_simulacion_elo.R  (5K)
+  91_auditoria_helpers.R  (2.91K)
+  92_auditoria_orquestador.R  (13.9K)
+  93_auditoria_spotcheck.R  (4.49K)
 40_salidas/
-  fuerza_equipos.csv  (4.7K)
-  historial_partidos.csv  (14.1K)
-  rating_confederaciones.csv  (342)
+  datos_interfaz.json  (66.5K)
+  fuerza_equipos.csv  (6.65K)
+  historial_partidos_compuesto.csv  (4.35K)
+  historial_partidos_elo.csv  (4.35K)
+  historial_partidos.csv  (14.7K)
+  rating_confederaciones_compuesto.csv  (355)
+  rating_confederaciones_elo.csv  (349)
+  rating_confederaciones.csv  (341)
   rating_equipos.csv  (2.23K)
-  resultados_partidos.csv  (7.15K)
+  resultados_partidos.csv  (5.85K)
 50_documentacion/
   activa/
+    backlog_acumulativo.md  (4.78K)
     decisiones/
+      20260702_auditoria_cifras.md  (1.92K)
+      20260703_decision_handoff_diseno_excepcion.md  (2.58K)
+      20260703_decision_ofc_rating_inicial_cero.md  (1.75K)
       assets/
         fonts/
       Dashboard Mundial 2026 (standalone).html  (305K)
@@ -41,13 +55,17 @@ ARBOL
     SETTINGS_Y_PROMPTS_OPERACIONALES.md  (62.9K)
   andamios/
   estructura/
-    20260702_195155_estructura.md  (1.28K)
-    20260702_195155_estructura.txt  (1.28K)
-    20260702_200343_estructura.md  (1.71K)
-    20260702_200343_estructura.txt  (1.7K)
-    estructura_actual.md  (1.71K)
-    estructura_actual.txt  (1.7K)
+    20260702_221050_estructura.md  (2.13K)
+    20260702_221050_estructura.txt  (2.12K)
+    20260703_072556_estructura.md  (2.58K)
+    20260703_072556_estructura.txt  (2.58K)
+    estructura_actual.md  (2.58K)
+    estructura_actual.txt  (2.58K)
   traspasos/
+    traspaso_cierre_v01.md  (30K)
+    traspaso_cierre_v02.md  (27K)
+    traspaso_cierre_v03.md  (16.6K)
+    traspaso_cierre_v04.md  (23K)
 assets/
   fonts/
     ibm-plex-mono-300-latin.woff2  (9.88K)
@@ -56,7 +74,7 @@ assets/
     ibm-plex-mono-600-latin.woff2  (9.88K)
     ibm-plex-mono-700-latin.woff2  (9.89K)
 CLAUDE.md  (8.46K)
-index.html  (57.3K)
+index.html  (70K)
 mundial2026_confederaciones.Rproj  (189)
 README.md  (1.49K)
 tests/
@@ -64,12 +82,13 @@ tests/
 ============================================================
 CONTEO POR EXTENSION
 ============================================================
-  .csv: 10
-  .md: 8
-  .R: 8
+  .md: 16
+  .csv: 14
+  .R: 13
   .woff2: 5
   .html: 3
   .txt: 3
   .js: 1
+  .json: 1
   .Rproj: 1
 
