@@ -108,16 +108,16 @@
   th.eq-th{border-bottom-color:var(--conf-color, var(--uefa))}
   th.orden button{appearance:none; border:0; background:none; width:100%; padding:9px 12px; font-family:inherit;
     font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--uefa); display:flex; gap:5px; align-items:center}
-  th.orden button.right{justify-content:flex-end}
+  th.orden button.right{justify-content:center}
   th:not(.orden){padding:9px 12px; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--uefa); text-align:left}
-  th:not(.orden).num{text-align:right}
+  th:not(.orden).num{text-align:center}
   .ind{font-size:10px; color:transparent}
   th[aria-sort="ascending"] .ind, th[aria-sort="descending"] .ind{color:var(--accent)}
   tbody td{padding:8px 12px; border-bottom:1px solid var(--line-soft-2); white-space:nowrap}
   tbody tr.par{background:var(--paper)} tbody tr.impar{background:var(--row-alt)}
   tbody tr.cruce{background:var(--cross-row)}
   tbody tr.cruce td:first-child{box-shadow:inset 3px 0 0 var(--cross)}
-  td.num, th.num{text-align:right; font-variant-numeric:tabular-nums}
+  td.num, th.num{text-align:center; font-variant-numeric:tabular-nums}
   td.strong{font-weight:700; font-variant-numeric:tabular-nums}
   .codigo-mudo{font-size:11px; color:var(--muted); font-weight:500}
   .rank-cell{font-weight:700; color:var(--uefa); width:44px; font-variant-numeric:tabular-nums}
@@ -131,7 +131,7 @@
   .dot{display:inline-block; width:9px; height:9px; border-radius:2px; flex:none; vertical-align:middle}
 
   /* ---- Confederaciones: grid de tarjetas ---- */
-  .grid-conf{display:grid; grid-template-columns:repeat(auto-fill,minmax(322px,1fr)); gap:15px}
+  .grid-conf{display:grid; grid-template-columns:repeat(auto-fill,minmax(322px,1fr)); gap:15px; margin-top:22px}
   .card-conf{border:1px solid var(--line); background:var(--paper); border-top:3px solid var(--conf-color); padding:16px 18px}
   .card-conf .cab{display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line-soft); padding-bottom:10px}
   .card-conf .cab .nombre{font-size:15px; font-weight:700; letter-spacing:.01em}
@@ -146,10 +146,20 @@
   .card-conf .stat-v{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
   .card-conf .stat-nota{font-size:11px; color:var(--muted); margin-top:2px}
 
-  /* ---- Gráfico de barras divergente ---- */
+  /* ---- Gráfico de barras divergente + panel metodológico ---- */
   .card-barras{margin-top:22px; border:1px solid var(--line); background:var(--paper); padding:20px}
+  .card-barras-cab{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
   .card-barras h2{font-size:15px; font-weight:700; margin:0}
   .card-barras p{font-size:12px; color:var(--muted); margin:5px 0 18px}
+  .toggle-fuerza{display:inline-flex; border:1px solid var(--line); font-size:12px}
+  .toggle-fuerza button{padding:5px 12px; border:none; background:transparent; color:var(--muted); cursor:pointer; font-family:inherit}
+  .toggle-fuerza button.activo{background:var(--ink); color:var(--paper); font-weight:700}
+  .barras-layout{display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:stretch}
+  .panel-metodo{border:1px solid var(--line-soft); background:var(--bg); padding:14px 16px; font-size:12px; color:var(--ink); line-height:1.6}
+  .panel-metodo h3{font-size:12px; font-weight:700; margin:0 0 8px; letter-spacing:.02em}
+  .panel-metodo p{margin:0 0 8px; color:var(--muted)}
+  .panel-metodo p:last-child{margin-bottom:0}
+  @media (max-width:720px){ .barras-layout{grid-template-columns:1fr} }
 
   /* ---- Cards genéricas (Metodología / Tokens) ---- */
   .grid-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px}
@@ -231,7 +241,6 @@
     <button class="tab" id="tab-rankings" role="tab" aria-selected="false" aria-controls="panel-rankings" tabindex="-1">Rankings</button>
     <button class="tab" id="tab-equipo" role="tab" aria-selected="false" aria-controls="panel-equipo" tabindex="-1">Equipo</button>
     <button class="tab" id="tab-metodologia" role="tab" aria-selected="false" aria-controls="panel-metodologia" tabindex="-1">Metodología</button>
-    <button class="tab" id="tab-tokens" role="tab" aria-selected="false" aria-controls="panel-tokens" tabindex="-1">Tokens</button>
   </nav>
 </header>
 
@@ -243,12 +252,24 @@
       <h1 class="titulo">Rendimiento agregado por confederación</h1>
       <p class="desc">Rating promedio inicial vs. actual, desempeño observado frente al esperado por el modelo, y transferencia neta de rating en los cruces entre confederaciones.</p>
     </div>
-    <div class="grid-conf" id="grid-conf"></div>
     <div class="card-barras">
-      <h2>Cambio de rating por confederación</h2>
-      <p>Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
-      <div id="chart-conf"></div>
+      <div class="card-barras-cab">
+        <div>
+          <h2>Cambio de rating por confederación</h2>
+          <p>Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
+        </div>
+        <div class="toggle-fuerza" role="group" aria-label="Fuente de fuerza base">
+          <button id="btn-fuerza-fifa" class="activo" aria-pressed="true">FIFA</button>
+          <button id="btn-fuerza-compuesto" aria-pressed="false">Compuesto</button>
+        </div>
+      </div>
+      <div class="barras-layout">
+        <div id="chart-conf"></div>
+        <div class="panel-metodo" id="panel-metodo"></div>
+      </div>
     </div>
+
+    <div class="grid-conf" id="grid-conf"></div>
   </section>
 
   <!-- ============ VISTA 2: RANKINGS ============ -->
@@ -264,7 +285,7 @@
       <div class="chips" role="group" aria-label="Filtrar por confederación" id="chips-conf"></div>
       <span class="cuenta" id="cuenta-rk" aria-live="polite"></span>
     </div>
-    <div class="tabla-wrap scroll">
+    <div class="tabla-wrap">
       <table class="datos rankings" aria-label="Rankings de selecciones">
         <thead><tr id="cab-rk"></tr></thead>
         <tbody id="cuerpo-rk"></tbody>
@@ -299,7 +320,7 @@
   </section>
 
   <!-- ============ VISTA 5: TOKENS ============ -->
-  <section id="panel-tokens" role="tabpanel" aria-labelledby="tab-tokens" tabindex="0" class="oculto">
+  <section id="panel-tokens" tabindex="0" class="oculto">
     <div class="intro">
       <div class="eyebrow">Tokens</div>
       <h1 class="titulo">Sistema para replicar en HTML/CSS puro</h1>
@@ -536,10 +557,22 @@ function generarMock(){
       n_equipos:miembros.length};
   });
 
+  // Variante bajo fuerza_base_compuesto: mismo shape, MOCK no simula el
+  // motor dos veces (eso solo ocurre en el pipeline real); aproxima con
+  // un factor determinista por confederación para demostrar el toggle.
+  const FACTOR_MOCK_COMPUESTO = {UEFA:1.35, AFC:0.75, CAF:1.25, CONMEBOL:-0.6, CONCACAF:0.55, OFC:0.95};
+  const confederaciones_compuesto = confederaciones.map(c=>{
+    const f = FACTOR_MOCK_COMPUESTO[c.id] ?? 1;
+    const delta = r1(c.delta*f);
+    return {...c, delta, rating_actual:r1(c.rating_inicial+delta),
+      obs_vs_esp:r1(c.obs_vs_esp*f), transfer_neto:r1(c.transfer_neto*f)};
+  });
+
   // ----- Salida con el shape del contrato -----
   const salida = {
     meta:{torneo:"Mundial 2026", actualizado:"2026-07-02", fuente_fuerza:"compuesto (MOCK)"},
     confederaciones,
+    confederaciones_compuesto,
     equipos: equipos.map(t=>({
       codigo:t.codigo, nombre:t.nombre, confederacion:t.confederacion, grupo:t.grupo,
       pos_fifa:t.pos_fifa, puntos_fifa:t.puntos_fifa, elo:t.elo,
@@ -609,6 +642,46 @@ function pintarCabecera(){
 /* ==================================================================
    VISTA — CONFEDERACIONES (tarjetas + barras SVG divergentes)
    ================================================================== */
+let FUENTE_GRAFICO = "fifa"; // toggle del grafico "Cambio de rating por confederacion"; tarjetas siempre en fifa
+
+const METODO_TEXTO = {
+  fifa: {
+    titulo: "Fuerza base: FIFA",
+    parrafos: [
+      "El punto de partida de cada selección usa el ranking oficial FIFA (snapshot previo al torneo) como única fuente de fuerza inicial.",
+      "Es la base histórica y el criterio más conservador: refleja resultados acumulados en competencia oficial, no una proyección."
+    ]
+  },
+  compuesto: {
+    titulo: "Fuerza base: Compuesto (FIFA 60% + Elo 40%)",
+    parrafos: [
+      "Combina el ranking FIFA con el rating Elo (más sensible a forma reciente) en una proporción 60/40.",
+      "Al incorporar Elo, la expectativa de resultado (We) cambia para varios cruces, lo que redistribuye cuánta 'sorpresa' aporta cada partido al cambio de rating."
+    ]
+  }
+};
+
+function pintarPanelMetodo(){
+  const t = METODO_TEXTO[FUENTE_GRAFICO];
+  $("#panel-metodo").innerHTML =
+    `<h3>${esc(t.titulo)}</h3>` + t.parrafos.map(p=>`<p>${esc(p)}</p>`).join("");
+}
+
+function confsActivas(){
+  if(FUENTE_GRAFICO==="compuesto" && Array.isArray(DATOS.confederaciones_compuesto)){
+    return DATOS.confederaciones_compuesto;
+  }
+  return DATOS.confederaciones;
+}
+
+function pintarToggleFuerza(){
+  const bf=$("#btn-fuerza-fifa"), bc=$("#btn-fuerza-compuesto");
+  bf.classList.toggle("activo", FUENTE_GRAFICO==="fifa");
+  bc.classList.toggle("activo", FUENTE_GRAFICO==="compuesto");
+  bf.setAttribute("aria-pressed", FUENTE_GRAFICO==="fifa");
+  bc.setAttribute("aria-pressed", FUENTE_GRAFICO==="compuesto");
+}
+
 function initConfeds(){
   const grid=$("#grid-conf"); grid.innerHTML="";
   DATOS.confederaciones.forEach(c=>{
@@ -630,7 +703,22 @@ function initConfeds(){
       `</div>`;
     grid.appendChild(card);
   });
-  $("#chart-conf").innerHTML = barrasConf(DATOS.confederaciones);
+  $("#chart-conf").innerHTML = barrasConf(confsActivas());
+  pintarPanelMetodo();
+  pintarToggleFuerza();
+  if(!initConfeds._listo){
+    $("#btn-fuerza-fifa").addEventListener("click",()=>cambiarFuenteGrafico("fifa"));
+    $("#btn-fuerza-compuesto").addEventListener("click",()=>cambiarFuenteGrafico("compuesto"));
+    initConfeds._listo = true;
+  }
+}
+
+function cambiarFuenteGrafico(fuente){
+  if(fuente===FUENTE_GRAFICO) return;
+  FUENTE_GRAFICO = fuente;
+  $("#chart-conf").innerHTML = barrasConf(confsActivas());
+  pintarPanelMetodo();
+  pintarToggleFuerza();
 }
 
 // Gráfico de barras SVG divergente desde eje cero, ordenado por Δ desc.
@@ -674,7 +762,7 @@ const COLS = [
   {k:"rating_actual", t:"Rating modelo", num:true, titulo:"Rating del modelo"},
   {k:"cambio_rank", t:"Cambio", num:true, titulo:"Cambio de posición desde el inicio"}
 ];
-let ordEstado = {k:"rating_actual", dir:-1}; // default: Rating modelo desc
+let ordEstado = {k:"rank_actual", dir:1}; // default: # ascendente
 let filtroConf = "ALL";
 
 function initRankings(){
@@ -1005,7 +1093,7 @@ function initTokens(){
    ================================================================== */
 const TABS=[
   ["tab-conf","panel-conf"], ["tab-rankings","panel-rankings"], ["tab-equipo","panel-equipo"],
-  ["tab-metodologia","panel-metodologia"], ["tab-tokens","panel-tokens"]
+  ["tab-metodologia","panel-metodologia"]
 ];
 function activarTab(idx, foco){
   TABS.forEach(([tb,pn],i)=>{
