@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mundial 2026 · Modelo de evaluación del desempeño de selecciones</title>
+<style>
+  /* ============================================================
+     Prototipo de interfaz — archivo único, sin dependencias.
+     Dirección visual: handoff de Claude Design
+     (50_documentacion/activa/decisiones/). Tipografía IBM Plex
+     Mono local (assets/fonts/), sin CDNs.
+     ============================================================ */
+
+  /* ---- Tipografía local (subset latin: cubre tildes/ñ/¿¡ del español) ---- */
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:300;font-display:swap;
+    src:url('assets/fonts/ibm-plex-mono-300-latin.woff2') format('woff2');}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;
+    src:url('assets/fonts/ibm-plex-mono-400-latin.woff2') format('woff2');}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;
+    src:url('assets/fonts/ibm-plex-mono-500-latin.woff2') format('woff2');}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;
+    src:url('assets/fonts/ibm-plex-mono-600-latin.woff2') format('woff2');}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:700;font-display:swap;
+    src:url('assets/fonts/ibm-plex-mono-700-latin.woff2') format('woff2');}
+
+  :root{
+    /* Confederaciones (paleta derivada del emblema Mundial 2026) */
+    --uefa:#10294F; --conmebol:#C77D0E; --concacaf:#C8202B;
+    --caf:#1C7A44; --afc:#0E7C86; --ofc:#6A3D7A;
+    /* Funcionales */
+    --ink:#16181D; --paper:#FFFFFF; --bg:#FCFBF7; --header:#10294F;
+    --accent:#C8202B; --pos:#1C7A44; --neg:#C8202B; --cross:#E0A81E;
+    --cross-text:#B4820E; --line:#E4DCC9; --line-soft:#EFE8D6; --line-soft-2:#F1ECDE; --line-soft-3:#F3EEE0;
+    --muted:#6E6A61; --footer-bg:#F6F1E6; --selection-bg:#F2D34E;
+    --header-muted:#9DB3D0; --thead-bg:#F1EADB; --row-alt:#FCFAF4; --cross-row:#FBF6E4;
+    --chip-border:#C7BEAD;
+    /* Espaciado base-4 */
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px; --space-7:48px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; font-size:12.5px; line-height:1.5;}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  ::selection{background:var(--selection-bg); color:var(--uefa)}
+  table{border-collapse:collapse}
+  button{font-family:inherit; cursor:pointer}
+  input,select{font-family:inherit}
+  .oculto{display:none !important}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+  /* ---- Cabecera ---- */
+  header.app{background:var(--header); color:#F4F1E8; position:sticky; top:0; z-index:20; border-bottom:3px solid var(--accent)}
+  .cab-top{max-width:1260px; margin:0 auto; padding:13px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .logo{position:relative; width:44px; height:44px; flex:none}
+  .logo span{position:absolute; width:21px; height:21px; border:1px solid rgba(124,138,160,.4); border-radius:1px}
+  .logo .a{top:0; left:9px; transform:rotate(22deg); background:var(--accent); z-index:1}
+  .logo .b{top:9px; left:0; transform:rotate(-10deg); background:#F4F1E8; z-index:2}
+  .logo .c{top:17px; left:14px; transform:rotate(9deg); background:var(--caf); z-index:3}
+  .cab-tit{flex:1 1 280px}
+  .cab-eyebrow{font-size:12px; letter-spacing:.14em; color:var(--header-muted); font-weight:500}
+  .cab-h1{font-size:18px; font-weight:700; letter-spacing:.005em; line-height:1.2}
+  .cab-meta{font-size:11px; color:var(--header-muted); text-align:right; line-height:1.55}
+  .flag{display:inline-flex; align-items:center; gap:6px; margin-top:4px; padding:3px 9px; border-radius:2px;
+    font-size:11px; font-weight:600; border:1px solid rgba(157,179,208,.5)}
+  .flag .dot{width:7px; height:7px; border-radius:50%}
+  .flag.real{color:#8FE3B4} .flag.real .dot{background:#39C07A}
+  .flag.mock{color:#F2D34E} .flag.mock .dot{background:#F2D34E}
+
+  nav.tabs{max-width:1260px; margin:0 auto; padding:0 18px; display:flex; gap:0; flex-wrap:wrap}
+  .tab{appearance:none; border:0; background:none; padding:16px 24px; font-size:14.5px; font-weight:500;
+    color:var(--header-muted); border-bottom:4px solid transparent; margin-bottom:-3px; letter-spacing:.01em; white-space:nowrap}
+  .tab[aria-selected="true"]{color:#F4F1E8; font-weight:700; border-bottom-color:var(--selection-bg)}
+  .tab:hover{color:#F4F1E8}
+
+  main{flex:1; max-width:1260px; margin:0 auto; padding:26px 22px 60px; width:100%}
+  [role="tabpanel"]:focus{outline:none}
+
+  /* ---- Intro de sección ---- */
+  .intro{margin-bottom:18px}
+  .eyebrow{font-size:11px; letter-spacing:.12em; font-weight:600; color:var(--accent)}
+  h1.titulo{font-size:19px; font-weight:700; margin:5px 0 0; letter-spacing:-.005em}
+  .desc{font-size:12.5px; color:var(--muted); margin:7px 0 0; line-height:1.6; max-width:74ch}
+
+  /* ---- Controles / toolbar ---- */
+  .toolbar{display:flex; gap:var(--space-3); align-items:center; flex-wrap:wrap; margin-bottom:var(--space-3)}
+  input[type="search"]{font-size:13px; padding:8px 12px; border:1px solid var(--chip-border); background:var(--paper);
+    color:var(--ink); width:220px; border-radius:2px}
+  select{font-size:13px; padding:8px 10px; border:1px solid var(--chip-border); background:var(--paper);
+    color:var(--ink); border-radius:2px}
+  .chips{display:flex; gap:6px; flex-wrap:wrap}
+  .chip{appearance:none; display:inline-flex; align-items:center; padding:6px 11px; font-size:11.5px; font-weight:500;
+    border:1px solid var(--chip-border); background:var(--paper); color:#4A4740; border-radius:2px}
+  .chip .dot{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; vertical-align:middle}
+  .chip[aria-pressed="true"]{font-weight:700; border-color:var(--uefa); background:var(--uefa); color:#fff}
+  .cuenta{margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap}
+
+  /* ---- Tabla ---- */
+  .tabla-wrap{overflow:auto; border:1px solid var(--line); background:var(--paper)}
+  .tabla-wrap.scroll{max-height:66vh}
+  table.datos{width:100%; font-size:12.5px}
+  table.datos.rankings{min-width:780px}
+  table.datos.partidos{min-width:860px}
+  thead th{position:sticky; top:0; z-index:1; background:var(--thead-bg); border-bottom:2px solid var(--uefa);
+    padding:0; white-space:nowrap}
+  th.eq-th{border-bottom-color:var(--conf-color, var(--uefa))}
+  th.orden button{appearance:none; border:0; background:none; width:100%; padding:9px 12px; font-family:inherit;
+    font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--uefa); display:flex; gap:5px; align-items:center}
+  th.orden button.right{justify-content:flex-end}
+  th:not(.orden){padding:9px 12px; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--uefa); text-align:left}
+  th:not(.orden).num{text-align:right}
+  .ind{font-size:10px; color:transparent}
+  th[aria-sort="ascending"] .ind, th[aria-sort="descending"] .ind{color:var(--accent)}
+  tbody td{padding:8px 12px; border-bottom:1px solid var(--line-soft-2); white-space:nowrap}
+  tbody tr.par{background:var(--paper)} tbody tr.impar{background:var(--row-alt)}
+  tbody tr.cruce{background:var(--cross-row)}
+  tbody tr.cruce td:first-child{box-shadow:inset 3px 0 0 var(--cross)}
+  td.num, th.num{text-align:right; font-variant-numeric:tabular-nums}
+  td.strong{font-weight:700; font-variant-numeric:tabular-nums}
+  .codigo-mudo{font-size:11px; color:var(--muted); font-weight:500}
+  .rank-cell{font-weight:700; color:var(--uefa); width:44px; font-variant-numeric:tabular-nums}
+  .foot-nota{font-size:11px; color:var(--muted); margin-top:10px; line-height:1.6}
+
+  /* ---- Codificación de cambio: color + glifo + signo ---- */
+  .signo{font-variant-numeric:tabular-nums; font-weight:600}
+  .signo.pos{color:var(--pos)} .signo.neg{color:var(--neg)} .signo.cero{color:var(--muted); font-weight:500}
+
+  /* ---- Dots de confederación ---- */
+  .dot{display:inline-block; width:9px; height:9px; border-radius:2px; flex:none; vertical-align:middle}
+
+  /* ---- Confederaciones: grid de tarjetas ---- */
+  .grid-conf{display:grid; grid-template-columns:repeat(auto-fill,minmax(322px,1fr)); gap:15px}
+  .card-conf{border:1px solid var(--line); background:var(--paper); border-top:3px solid var(--conf-color); padding:16px 18px}
+  .card-conf .cab{display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line-soft); padding-bottom:10px}
+  .card-conf .cab .nombre{font-size:15px; font-weight:700; letter-spacing:.01em}
+  .card-conf .cab .neq{margin-left:auto; font-size:11px; color:var(--muted)}
+  .card-conf .linea-rating{display:flex; align-items:baseline; gap:8px; margin:13px 0 2px; flex-wrap:wrap}
+  .card-conf .ini{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .card-conf .flecha{font-size:13px; color:var(--muted)}
+  .card-conf .act{font-size:26px; font-weight:700; letter-spacing:-.01em; font-variant-numeric:tabular-nums}
+  .card-conf .caption{font-size:11px; letter-spacing:.04em; color:var(--muted); margin-bottom:13px}
+  .card-conf .stats{display:grid; grid-template-columns:1fr 1fr; gap:13px; border-top:1px solid var(--line-soft); padding-top:12px}
+  .card-conf .stat-k{font-size:11px; letter-spacing:.03em; color:var(--muted); margin-bottom:5px}
+  .card-conf .stat-v{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
+  .card-conf .stat-nota{font-size:11px; color:var(--muted); margin-top:2px}
+
+  /* ---- Gráfico de barras divergente ---- */
+  .card-barras{margin-top:22px; border:1px solid var(--line); background:var(--paper); padding:20px}
+  .card-barras h2{font-size:15px; font-weight:700; margin:0}
+  .card-barras p{font-size:12px; color:var(--muted); margin:5px 0 18px}
+
+  /* ---- Cards genéricas (Metodología / Tokens) ---- */
+  .grid-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px}
+  .card-simple{border:1px solid var(--line); background:var(--paper); padding:18px 20px}
+  .card-simple h2{font-size:13px; font-weight:700; margin:0 0 14px; letter-spacing:.01em; color:var(--uefa)}
+  .term{padding:9px 0; border-bottom:1px solid var(--line-soft-3)}
+  .term .t{font-size:12.5px; font-weight:700; color:var(--ink)}
+  .term .d{font-size:12px; color:var(--muted); line-height:1.55; margin-top:3px}
+
+  /* ---- Equipo ---- */
+  .eq-cabecera{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:16px}
+  .eq-sel-lbl{font-size:11px; letter-spacing:.05em; color:var(--muted); display:block; margin-bottom:4px}
+  .eq-resumen{display:flex; gap:20px; align-items:center; border:1px solid var(--line); background:var(--paper);
+    border-left:4px solid var(--conf-color); padding:16px 20px; flex-wrap:wrap}
+  .eq-badge{background:var(--conf-color); width:52px; height:52px; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:14px; color:#fff; letter-spacing:.02em; border-radius:2px; flex:none}
+  .eq-nombre{font-size:18px; font-weight:700}
+  .eq-sub{display:flex; align-items:center; gap:8px; margin-top:4px; font-size:11.5px; color:var(--muted)}
+  .eq-stats{display:flex; gap:20px; flex-wrap:wrap; margin-left:auto}
+  .eq-stat-k{font-size:11px; letter-spacing:.03em; color:var(--muted)}
+  .eq-stat-v{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums}
+  .card-chart{border:1px solid var(--line); background:var(--paper); padding:16px 20px; margin-top:16px}
+  .card-chart h2{font-size:14px; font-weight:700; margin:0}
+  .leyenda-cruce{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px}
+  .leyenda-cruce .ring{display:inline-block; width:12px; height:12px; border-radius:50%; border:2px solid var(--cross); background:#FBF3DA}
+  .placeholder-nota{color:var(--muted); font-size:.8rem; font-style:italic; margin:10px 0 0}
+
+  /* ---- Tokens ---- */
+  .tok-row{display:flex; align-items:center; gap:12px; padding:7px 0; border-bottom:1px solid var(--line-soft-3)}
+  .tok-swatch{width:30px; height:30px; border-radius:2px; flex:none; border:1px solid var(--line)}
+  .tok-name{font-size:12.5px; font-weight:600; flex:1}
+  .tok-name-use{font-size:11px; color:var(--muted)}
+  .tok-hex{font-size:12px; color:var(--muted)}
+  .tok-bar{height:12px; background:var(--uefa); display:inline-block}
+  .tok-space-name{font-size:11px; color:var(--muted); width:76px; flex:none}
+  .tok-space-px{font-size:11px; color:var(--muted); margin-left:auto}
+
+  /* ---- Footer ---- */
+  footer.app{border-top:1px solid var(--line); background:var(--footer-bg); padding:14px 22px}
+  .foot-row{max-width:1260px; margin:0 auto; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-size:11px; color:var(--muted)}
+
+  /* ---- Tooltip del gráfico de equipo ---- */
+  .tt{position:fixed; pointer-events:none; z-index:30; background:var(--paper); border:1px solid var(--accent);
+    border-radius:2px; padding:8px 10px; font-size:11.5px; box-shadow:0 2px 8px rgba(0,0,0,.18); max-width:240px;
+    opacity:0; transition:opacity .08s; color:var(--ink); line-height:1.5}
+  .tt.on{opacity:1}
+  .tt b{color:var(--accent)}
+  svg .pt{cursor:pointer}
+  svg text{fill:var(--muted); font-size:11px}
+
+  .vacio{color:var(--muted); padding:30px; text-align:center}
+
+  @media (max-width:640px){
+    .cab-meta{display:none}
+    .eq-stats{margin-left:0; gap:14px}
+  }
+</style>
+</head>
+<body>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:var(--bg)">
+
+<header class="app">
+  <div class="cab-top">
+    <div class="logo" aria-hidden="true"><span class="a"></span><span class="b"></span><span class="c"></span></div>
+    <div class="cab-tit">
+      <div class="cab-eyebrow">Análisis retrospectivo por confederación</div>
+      <div class="cab-h1">Modelo de evaluación del desempeño de selecciones</div>
+    </div>
+    <div>
+      <div class="cab-meta" id="cab-meta">48 selecciones · 6 confederaciones · 12 grupos<br>cargando…</div>
+      <span class="flag mock" id="flag" role="status" aria-live="polite">
+        <span class="dot"></span><span id="flag-txt">Datos de ejemplo (MOCK)</span>
+      </span>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Vistas del panel">
+    <button class="tab" id="tab-conf" role="tab" aria-selected="true" aria-controls="panel-conf">Confederaciones</button>
+    <button class="tab" id="tab-rankings" role="tab" aria-selected="false" aria-controls="panel-rankings" tabindex="-1">Rankings</button>
+    <button class="tab" id="tab-equipo" role="tab" aria-selected="false" aria-controls="panel-equipo" tabindex="-1">Equipo</button>
+    <button class="tab" id="tab-metodologia" role="tab" aria-selected="false" aria-controls="panel-metodologia" tabindex="-1">Metodología</button>
+    <button class="tab" id="tab-tokens" role="tab" aria-selected="false" aria-controls="panel-tokens" tabindex="-1">Tokens</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ VISTA 1: CONFEDERACIONES (default) ============ -->
+  <section id="panel-conf" role="tabpanel" aria-labelledby="tab-conf" tabindex="0">
+    <div class="intro">
+      <div class="eyebrow">Confederaciones</div>
+      <h1 class="titulo">Rendimiento agregado por confederación</h1>
+      <p class="desc">Rating promedio inicial vs. actual, desempeño observado frente al esperado por el modelo, y transferencia neta de rating en los cruces entre confederaciones.</p>
+    </div>
+    <div class="grid-conf" id="grid-conf"></div>
+    <div class="card-barras">
+      <h2>Cambio de rating por confederación</h2>
+      <p>Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
+      <div id="chart-conf"></div>
+    </div>
+  </section>
+
+  <!-- ============ VISTA 2: RANKINGS ============ -->
+  <section id="panel-rankings" role="tabpanel" aria-labelledby="tab-rankings" tabindex="0" class="oculto">
+    <div class="intro">
+      <div class="eyebrow">Rankings</div>
+      <h1 class="titulo">Clasificación general del modelo</h1>
+      <p class="desc">Ordena por cualquier columna. <strong style="color:var(--ink);font-weight:600">#</strong> es la posición del modelo · <strong style="color:var(--ink);font-weight:600">Cambio</strong> es la variación de posición frente al inicio del torneo.</p>
+    </div>
+    <div class="toolbar">
+      <label class="sr-only" for="f-busca">Buscar selección</label>
+      <input type="search" id="f-busca" placeholder="Buscar selección…" aria-label="Buscar selección por nombre o código" autocomplete="off">
+      <div class="chips" role="group" aria-label="Filtrar por confederación" id="chips-conf"></div>
+      <span class="cuenta" id="cuenta-rk" aria-live="polite"></span>
+    </div>
+    <div class="tabla-wrap scroll">
+      <table class="datos rankings" aria-label="Rankings de selecciones">
+        <thead><tr id="cab-rk"></tr></thead>
+        <tbody id="cuerpo-rk"></tbody>
+      </table>
+    </div>
+    <p class="foot-nota">Cambio: <span class="signo pos">▲ verde</span> = ascenso de posición · <span class="signo neg">▼ rojo</span> = descenso. Elo y rating del modelo derivados del ranking FIFA — ver pestaña <strong style="color:var(--muted)">Tokens</strong>.</p>
+  </section>
+
+  <!-- ============ VISTA 3: EQUIPO ============ -->
+  <section id="panel-equipo" role="tabpanel" aria-labelledby="tab-equipo" tabindex="0" class="oculto">
+    <div class="eq-cabecera">
+      <div>
+        <div class="eyebrow">Equipo · línea de tiempo</div>
+        <h1 class="titulo">Evolución del rating partido a partido</h1>
+      </div>
+      <div>
+        <label class="eq-sel-lbl" for="sel-equipo">Seleccionar equipo</label>
+        <select id="sel-equipo" aria-label="Seleccionar equipo" style="min-width:240px"></select>
+      </div>
+    </div>
+    <div id="equipo-detalle"></div>
+  </section>
+
+  <!-- ============ VISTA 4: METODOLOGÍA ============ -->
+  <section id="panel-metodologia" role="tabpanel" aria-labelledby="tab-metodologia" tabindex="0" class="oculto">
+    <div class="intro">
+      <div class="eyebrow">Metodología</div>
+      <h1 class="titulo">Qué significa cada indicador</h1>
+      <p class="desc">Definiciones de los términos usados en Rankings, Confederaciones y Equipo.</p>
+    </div>
+    <div class="grid-cards" id="grid-metodologia"></div>
+  </section>
+
+  <!-- ============ VISTA 5: TOKENS ============ -->
+  <section id="panel-tokens" role="tabpanel" aria-labelledby="tab-tokens" tabindex="0" class="oculto">
+    <div class="intro">
+      <div class="eyebrow">Tokens</div>
+      <h1 class="titulo">Sistema para replicar en HTML/CSS puro</h1>
+      <p class="desc">Paleta derivada del emblema del Mundial 2026 (rojo, azul marino, verde) extendida a seis confederaciones. Sin frameworks: variables CSS y una sola familia monoespaciada.</p>
+    </div>
+    <div class="grid-cards">
+      <div class="card-simple">
+        <h2>Color · confederaciones</h2>
+        <div id="tok-conf"></div>
+      </div>
+      <div class="card-simple">
+        <h2>Color · funcional</h2>
+        <div id="tok-func"></div>
+      </div>
+      <div class="card-simple">
+        <h2 style="margin-bottom:6px">Tipografía</h2>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.55">IBM Plex Mono — 300 / 400 / 500 / 600 / 700, servida localmente desde <code>assets/fonts/</code>. Números tabulares en todas las tablas.</p>
+        <div id="tok-type"></div>
+      </div>
+      <div class="card-simple">
+        <h2 style="margin-bottom:6px">Espaciado · escala base 4 px</h2>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.55">Múltiplos de 4. Usados en padding, gap y márgenes.</p>
+        <div id="tok-space"></div>
+      </div>
+    </div>
+    <div class="card-simple" style="margin-top:16px">
+      <h2>Notas de derivación de datos</h2>
+      <ul style="font-size:12px;color:#4A4740;line-height:1.75;margin:0;padding-left:18px" id="tok-notas"></ul>
+    </div>
+  </section>
+</main>
+
+<div class="tt" id="tooltip" role="status" aria-live="off"></div>
+
+<footer class="app">
+  <div class="foot-row">
+    <span>Modelo de evaluación del desempeño de selecciones · Mundial 2026</span>
+    <span>Análisis retrospectivo — se actualiza por ronda. Historial: <strong>placeholder</strong> hasta conectar <code>40_salidas/datos_interfaz.json</code>.</span>
+  </div>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ==================================================================
+   DATOS MOCK — se generan a partir de los 48 equipos reales del
+   Mundial 2026 (confederación, grupo, posición y puntos FIFA reales).
+   El HISTORIAL partido a partido es SIMULADO con un modelo tipo
+   Elo/FIFA SUM y una semilla fija (reproducible). Son PLACEHOLDERS:
+   sirven solo para poblar las cinco vistas hasta enchufar el JSON real.
+   Capa de datos sin cambios frente a la versión anterior del prototipo.
+   ================================================================== */
+
+// --- Insumos reales embebidos: [codigo, nombre_es, confederacion, grupo, pos_fifa, puntos_fifa] ---
+const EQUIPOS_BASE = [
+  ["MEX","México","CONCACAF","A",14,1687.48],["RSA","Sudáfrica","CAF","A",60,1428.38],
+  ["KOR","Corea del Sur","AFC","A",25,1591.63],["CZE","Chequia","UEFA","A",40,1505.74],
+  ["CAN","Canadá","CONCACAF","B",30,1559.48],["BIH","Bosnia y Herzegovina","UEFA","B",64,1387.22],
+  ["QAT","Catar","AFC","B",56,1450.31],["SUI","Suiza","UEFA","B",19,1650.06],
+  ["BRA","Brasil","CONMEBOL","C",6,1765.86],["MAR","Marruecos","CAF","C",7,1755.10],
+  ["HAI","Haití","CONCACAF","C",83,1293.10],["SCO","Escocia","UEFA","C",42,1503.34],
+  ["USA","Estados Unidos","CONCACAF","D",17,1671.23],["PAR","Paraguay","CONMEBOL","D",41,1505.35],
+  ["AUS","Australia","AFC","D",27,1579.34],["TUR","Turquía","UEFA","D",22,1605.73],
+  ["GER","Alemania","UEFA","E",10,1735.77],["CUW","Curazao","CONCACAF","E",82,1294.77],
+  ["CIV","Costa de Marfil","CAF","E",33,1540.87],["ECU","Ecuador","CONMEBOL","E",23,1598.52],
+  ["NED","Países Bajos","UEFA","F",8,1753.57],["JPN","Japón","AFC","F",18,1661.58],
+  ["SWE","Suecia","UEFA","F",38,1509.79],["TUN","Túnez","CAF","F",45,1476.41],
+  ["BEL","Bélgica","UEFA","G",9,1742.24],["EGY","Egipto","CAF","G",29,1562.37],
+  ["IRN","Irán","AFC","G",20,1619.58],["NZL","Nueva Zelanda","OFC","G",85,1275.58],
+  ["ESP","España","UEFA","H",2,1874.71],["URU","Uruguay","CONMEBOL","H",16,1673.07],
+  ["KSA","Arabia Saudita","AFC","H",61,1423.88],["CPV","Cabo Verde","CAF","H",67,1371.11],
+  ["FRA","Francia","UEFA","I",3,1870.70],["SEN","Senegal","CAF","I",15,1684.07],
+  ["NOR","Noruega","UEFA","I",31,1557.44],["IRQ","Irak","AFC","I",57,1446.28],
+  ["ARG","Argentina","CONMEBOL","J",1,1877.27],["AUT","Austria","UEFA","J",24,1597.40],
+  ["ALG","Argelia","CAF","J",28,1571.03],["JOR","Jordania","AFC","J",63,1387.74],
+  ["POR","Portugal","UEFA","K",5,1767.85],["COL","Colombia","CONMEBOL","K",13,1698.35],
+  ["UZB","Uzbekistán","AFC","K",50,1458.73],["COD","RD Congo","CAF","K",46,1474.43],
+  ["ENG","Inglaterra","UEFA","L",4,1828.02],["CRO","Croacia","UEFA","L",11,1714.87],
+  ["GHA","Ghana","CAF","L",73,1346.88],["PAN","Panamá","CONCACAF","L",34,1539.16]
+];
+
+const CONFEDS = ["UEFA","CONMEBOL","CAF","AFC","CONCACAF","OFC"];
+const COLOR_CONF = {UEFA:"--uefa",CONMEBOL:"--conmebol",CAF:"--caf",AFC:"--afc",CONCACAF:"--concacaf",OFC:"--ofc"};
+
+// Importancia de fase (I) del modelo tipo FIFA SUM (placeholder).
+const IMPORTANCIA = {grupos:25, dieciseisavos:35, octavos:45};
+const D_ESCALA = 40;   // escala de la expectativa (ajustada al ejemplo del contrato)
+const K_MODELO = 0.30; // factor de suavizado del cambio de rating
+
+// PRNG determinista (mulberry32) — mock reproducible sin Math.random.
+function prng(seed){return function(){seed|=0; seed=seed+0x6D2B79F5|0;
+  let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;};}
+
+// Factor de goles (G) estilo FIFA.
+function factorG(dif){dif=Math.abs(dif); if(dif<=1)return 1; if(dif===2)return 1.5; return (11+dif)/8;}
+function expectativa(ra,rb){return 1/(1+Math.pow(10,(rb-ra)/D_ESCALA));}
+function r1(x){return Math.round(x*10)/10;}
+
+// ---- Construcción del mock completo ----
+function generarMock(){
+  const rand = prng(20260702);
+  const puntos = EQUIPOS_BASE.map(e=>e[5]);
+  const maxP = Math.max(...puntos), minP = Math.min(...puntos);
+
+  // Equipos con rating inicial derivado de puntos FIFA (ARG≈100).
+  const equipos = EQUIPOS_BASE.map(e=>{
+    const [codigo,nombre,confederacion,grupo,pos_fifa,puntos_fifa]=e;
+    const rating_inicial = r1(puntos_fifa/maxP*100);
+    const elo = Math.round(1300 + (puntos_fifa-minP)/(maxP-minP)*700); // placeholder
+    return {codigo,nombre,confederacion,grupo,pos_fifa,puntos_fifa,elo,
+      rating_inicial, rating:rating_inicial, historial:[], _pts:0, _dg:0, _gf:0, _vivo:true};
+  });
+  const porCod = {}; equipos.forEach(t=>porCod[t.codigo]=t);
+
+  // Ranking global actual (para rank_post tras cada partido).
+  function ranksActuales(){
+    const ord=[...equipos].sort((a,b)=>b.rating-a.rating);
+    const m={}; ord.forEach((t,i)=>m[t.codigo]=i+1); return m;
+  }
+  // rank inicial
+  const rkIni = (()=>{const o=[...equipos].sort((a,b)=>b.rating_inicial-a.rating_inicial);
+    const m={}; o.forEach((t,i)=>m[t.codigo]=i+1); return m;})();
+  equipos.forEach(t=>t.rank_inicial=rkIni[t.codigo]);
+
+  let partidoGlobal = 0;
+  // Simula un partido entre a y b, actualiza ratings y registra en ambos historiales.
+  function jugar(a,b,fase,permitirEmpate){
+    partidoGlobal++;
+    const We_a = expectativa(a.rating,b.rating);
+    // Resultado según expectativa (favorito gana más seguido).
+    const r = rand();
+    let ga_goles, gb_goles;
+    let outcome; // desde la perspectiva de a
+    const umbralV = We_a*0.7, umbralE = umbralV + (permitirEmpate?0.24:0);
+    if(r < umbralV) outcome="V"; else if(r < umbralE) outcome="E"; else outcome="D";
+    // Marcadores plausibles.
+    const gGrande=()=>1+Math.floor(rand()*3), gChico=()=>Math.floor(rand()*2);
+    if(outcome==="V"){ga_goles=gGrande(); gb_goles=Math.min(ga_goles-1,gChico());}
+    else if(outcome==="D"){gb_goles=gGrande(); ga_goles=Math.min(gb_goles-1,gChico());}
+    else {ga_goles=1+Math.floor(rand()*2); gb_goles=ga_goles;}
+    if(ga_goles<0)ga_goles=0; if(gb_goles<0)gb_goles=0;
+
+    const I = IMPORTANCIA[fase];
+    const inter = a.confederacion!==b.confederacion;
+
+    // Actualiza a un equipo (persp) y devuelve entrada de historial.
+    function aplicar(t, opp, gf, ga, We){
+      const W = gf>ga?1 : gf<ga?0 : 0.5;
+      const res = gf>ga?"V" : gf<ga?"D" : "E";
+      const G = factorG(gf-ga);
+      const delta_r = r1(K_MODELO*I*G*(W-We));
+      t.rating = r1(t.rating + delta_r);
+      // puntos de grupo (3/1/0) para clasificación
+      if(fase==="grupos"){ t._pts += (res==="V"?3:res==="E"?1:0); t._dg += (gf-ga); t._gf += gf; }
+      return {t, entry:{
+        partido:0, fase, rival:opp.codigo, rival_nombre:opp.nombre, rival_confederacion:opp.confederacion, sede:"neutral",
+        gf, ga, resultado:res, W, We:r1(We), I, G:r1(G), delta_r,
+        rating_post:t.rating, rank_post:0,
+        inter_confederacion:inter, delta_conf: inter? delta_r : 0
+      }};
+    }
+    const ra = aplicar(a,b,ga_goles,gb_goles,We_a);
+    const rb = aplicar(b,a,gb_goles,ga_goles,1-We_a);
+    const rk = ranksActuales();
+    [ra,rb].forEach(x=>{
+      x.entry.partido = x.t.historial.length+1;
+      x.entry.rank_post = rk[x.t.codigo];
+      x.t.historial.push(x.entry);
+    });
+    return {ga_goles, gb_goles, outcome};
+  }
+
+  // ----- Fase de grupos: round-robin, ordenado por jornada global -----
+  const grupos = {};
+  equipos.forEach(t=>{(grupos[t.grupo]=grupos[t.grupo]||[]).push(t);});
+  const pares = [[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]]; // 3 jornadas × 2 partidos
+  for(let j=0;j<3;j++){
+    for(const g of Object.keys(grupos).sort()){
+      const eq=grupos[g];
+      [pares[j*2],pares[j*2+1]].forEach(([x,y])=>jugar(eq[x],eq[y],"grupos",true));
+    }
+  }
+
+  // ----- Clasificación: 1° y 2° de cada grupo + 8 mejores terceros -----
+  function ordenGrupo(a,b){return b._pts-a._pts || b._dg-a._dg || b._gf-a._gf || a.rank_inicial-b.rank_inicial;}
+  const primeros=[], segundos=[], terceros=[];
+  for(const g of Object.keys(grupos).sort()){
+    const tabla=[...grupos[g]].sort(ordenGrupo);
+    primeros.push(tabla[0]); segundos.push(tabla[1]); terceros.push(tabla[2]);
+    tabla.slice(3).forEach(t=>t._vivo=false);
+  }
+  terceros.sort(ordenGrupo);
+  const tercerosClas = terceros.slice(0,8);
+  terceros.slice(8).forEach(t=>t._vivo=false);
+
+  // ----- Dieciseisavos (32) -> Octavos (16) -----
+  function rondaKO(clasificados, fase){
+    const ganadores=[];
+    for(let i=0;i<clasificados.length;i+=2){
+      const a=clasificados[i], b=clasificados[i+1];
+      if(!b){ganadores.push(a); continue;}
+      const res=jugar(a,b,fase,false);
+      const gana = res.outcome==="V"?a : res.outcome==="D"?b : (a.rating>=b.rating?a:b);
+      const pierde = gana===a?b:a;
+      pierde._vivo=false; ganadores.push(gana);
+    }
+    return ganadores;
+  }
+  // Emparejamiento simple: 32 clasificados (24 + 8 terceros), sembrados por rating inicial.
+  const r32 = [...primeros,...segundos,...tercerosClas].sort((a,b)=>a.rank_inicial-b.rank_inicial);
+  const octavosClas = rondaKO(r32,"dieciseisavos");
+  rondaKO(octavosClas,"octavos");
+
+  // ----- Cierre: rating_actual, rank_actual, delta -----
+  const rkFin = ranksActuales();
+  equipos.forEach(t=>{
+    t.rating_actual = t.rating;
+    t.rank_actual = rkFin[t.codigo];
+    t.delta = r1(t.rating_actual - t.rating_inicial);
+  });
+
+  // ----- Agregación por confederación -----
+  const confederaciones = CONFEDS.map(id=>{
+    const miembros = equipos.filter(t=>t.confederacion===id);
+    const rating_inicial = r1(miembros.reduce((s,t)=>s+t.rating_inicial,0)/miembros.length);
+    let transfer=0, obs=0;
+    miembros.forEach(t=>t.historial.forEach(h=>{
+      if(h.inter_confederacion){ transfer+=h.delta_conf; obs += (h.W - h.We); }
+    }));
+    return {id, rating_inicial, rating_actual:r1(rating_inicial+transfer),
+      delta:r1(transfer), obs_vs_esp:r1(obs), transfer_neto:r1(transfer),
+      n_equipos:miembros.length};
+  });
+
+  // ----- Salida con el shape del contrato -----
+  const salida = {
+    meta:{torneo:"Mundial 2026", actualizado:"2026-07-02", fuente_fuerza:"compuesto (MOCK)"},
+    confederaciones,
+    equipos: equipos.map(t=>({
+      codigo:t.codigo, nombre:t.nombre, confederacion:t.confederacion, grupo:t.grupo,
+      pos_fifa:t.pos_fifa, puntos_fifa:t.puntos_fifa, elo:t.elo,
+      rating_inicial:t.rating_inicial, rating_actual:t.rating_actual,
+      rank_inicial:t.rank_inicial, rank_actual:t.rank_actual, delta:t.delta,
+      historial:t.historial.map(h=>({
+        partido:h.partido, fase:h.fase, rival:h.rival, rival_nombre:h.rival_nombre, rival_confederacion:h.rival_confederacion,
+        sede:h.sede, gf:h.gf, ga:h.ga, resultado:h.resultado, W:h.W, We:h.We,
+        I:h.I, G:h.G, delta_r:h.delta_r, rating_post:h.rating_post, rank_post:h.rank_post,
+        inter_confederacion:h.inter_confederacion, delta_conf:r1(h.delta_conf)
+      }))
+    }))
+  };
+  return salida;
+}
+
+/* ==================================================================
+   CARGA DE DATOS: intenta el JSON real; si falla, usa el MOCK.
+   ================================================================== */
+let DATOS = null, ES_MOCK = true;
+
+async function cargar(){
+  try{
+    const resp = await fetch("40_salidas/datos_interfaz.json", {cache:"no-store"});
+    if(resp.ok){
+      const j = await resp.json();
+      if(j && Array.isArray(j.equipos) && j.equipos.length){ DATOS=j; ES_MOCK=false; }
+    }
+  }catch(e){ /* file:// o inexistente -> mock */ }
+  if(!DATOS){ DATOS = generarMock(); ES_MOCK = true; }
+  iniciar();
+}
+
+/* ==================================================================
+   UTILIDADES DE UI
+   ================================================================== */
+const $ = s=>document.querySelector(s);
+const cssVar = n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function colorConf(id){return cssVar(COLOR_CONF[id]||"--muted");}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+// Codificación triple innegociable: color + glifo (▲/▼/–) + número con signo.
+function signClase(v){return v>0.049?"pos":v<-0.049?"neg":"cero";}
+function signGlifo(v){return v>0.049?"▲":v<-0.049?"▼":"–";}
+function fmtSigno(n,dec){
+  n = Number(n);
+  const v = dec!=null ? Math.abs(n).toFixed(dec) : Math.abs(Math.round(n));
+  return (n>0?"+":n<0?"−":"") + v;
+}
+function signoHtml(n,dec){
+  return `<span class="signo ${signClase(n)}">${signGlifo(n)} ${fmtSigno(n,dec)}</span>`;
+}
+function dotHtml(conf, size){
+  const cc=colorConf(conf);
+  return `<span class="dot" style="background:${cc}${size?`;width:${size}px;height:${size}px`:''}"></span>`;
+}
+
+function pintarCabecera(){
+  const f=$("#flag"), t=$("#flag-txt");
+  if(ES_MOCK){ f.className="flag mock"; t.textContent="Datos de ejemplo (MOCK)"; }
+  else{ f.className="flag real"; t.textContent="Datos reales del pipeline"; }
+  const m=DATOS.meta||{};
+  $("#cab-meta").innerHTML =
+    `48 selecciones · 6 confederaciones · 12 grupos<br>${esc(m.actualizado||"—")} · fuerza: ${esc(m.fuente_fuerza||"—")}`;
+}
+
+/* ==================================================================
+   VISTA — CONFEDERACIONES (tarjetas + barras SVG divergentes)
+   ================================================================== */
+function initConfeds(){
+  const grid=$("#grid-conf"); grid.innerHTML="";
+  DATOS.confederaciones.forEach(c=>{
+    const cc=colorConf(c.id);
+    const card=document.createElement("article");
+    card.className="card-conf"; card.style.setProperty("--conf-color",cc);
+    card.innerHTML =
+      `<div class="cab">${dotHtml(c.id,11)}<span class="nombre">${esc(c.id)}</span><span class="neq">${c.n_equipos} selecciones</span></div>`+
+      `<div class="linea-rating">`+
+        `<span class="ini">${Number(c.rating_inicial).toFixed(1)}</span>`+
+        `<span class="flecha">→</span>`+
+        `<span class="act">${Number(c.rating_actual).toFixed(1)}</span>`+
+        `<span style="margin-left:2px">${signoHtml(c.delta,1)}</span>`+
+      `</div>`+
+      `<div class="caption">Rating promedio · inicial → actual</div>`+
+      `<div class="stats">`+
+        `<div><div class="stat-k">Observado − esperado</div><div class="stat-v">${signoHtml(c.obs_vs_esp,2)}</div><div class="stat-nota">puntos en cruces</div></div>`+
+        `<div><div class="stat-k">Transferencia neta</div><div class="stat-v">${signoHtml(c.transfer_neto,1)}</div><div class="stat-nota">puntos de rating</div></div>`+
+      `</div>`;
+    grid.appendChild(card);
+  });
+  $("#chart-conf").innerHTML = barrasConf(DATOS.confederaciones);
+}
+
+// Gráfico de barras SVG divergente desde eje cero, ordenado por Δ desc.
+function barrasConf(confs){
+  const ordenadas=[...confs].sort((a,b)=>b.delta-a.delta);
+  const maxAbs=Math.max(1,...ordenadas.map(c=>Math.abs(c.delta)));
+  const W=900, rowH=34, padTop=22, padBottom=6, labelW=112, valW=60, gap=12;
+  const chartL=labelW+gap, chartR=W-valW-gap, chartW=chartR-chartL, cx=chartL+chartW/2;
+  const H=padTop+ordenadas.length*rowH+padBottom;
+  let filas="";
+  ordenadas.forEach((c,i)=>{
+    const y=padTop+i*rowH, barH=22, barY=y+(rowH-barH)/2;
+    const pct=Math.abs(c.delta)/maxAbs*(chartW/2-4);
+    const col=colorConf(c.id);
+    const barX = c.delta>=0 ? cx : cx-pct;
+    filas+=
+      `<rect x="${chartL}" y="${barY.toFixed(1)}" width="${chartW.toFixed(1)}" height="${barH}" fill="#FAF7EF" stroke="${cssVar('--line-soft')}"/>`+
+      `<line x1="${cx}" y1="${barY.toFixed(1)}" x2="${cx}" y2="${(barY+barH).toFixed(1)}" stroke="${cssVar('--chip-border')}"/>`+
+      (pct>0.5?`<rect x="${barX.toFixed(1)}" y="${(barY+3).toFixed(1)}" width="${pct.toFixed(1)}" height="${barH-6}" fill="${col}"><title>${esc(c.id)}: ${fmtSigno(c.delta,1)}</title></rect>`:"")+
+      `<rect x="0" y="${barY.toFixed(1)}" width="${labelW-6}" height="${barH}" fill="transparent"/>`+
+      `<circle cx="6" cy="${(y+rowH/2).toFixed(1)}" r="4.5" fill="${col}"/>`+
+      `<text x="16" y="${(y+rowH/2+4).toFixed(1)}" font-size="12" font-weight="600" fill="${cssVar('--ink')}">${esc(c.id)}</text>`+
+      `<text x="${(W-2).toFixed(1)}" y="${(y+rowH/2+4).toFixed(1)}" text-anchor="end" font-size="13" font-weight="600" font-variant-numeric="tabular-nums" fill="${c.delta>0.049?cssVar('--pos'):c.delta<-0.049?cssVar('--neg'):cssVar('--muted')}">${signGlifo(c.delta)} ${fmtSigno(c.delta,1)}</text>`;
+  });
+  const leyenda=`<text x="${chartL}" y="14" font-size="11" fill="${cssVar('--muted')}">↤ desciende</text>`+
+    `<text x="${cx}" y="14" text-anchor="middle" font-size="11" fill="${cssVar('--muted')}">0</text>`+
+    `<text x="${chartR}" y="14" text-anchor="end" font-size="11" fill="${cssVar('--muted')}">asciende ↦</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cambio de rating por confederación, barras divergentes desde eje cero">`+
+    `<title>Cambio de rating por confederación</title>${leyenda}${filas}</svg>`;
+}
+
+/* ==================================================================
+   VISTA — RANKINGS (tabla ordenable + búsqueda + chips)
+   ================================================================== */
+const COLS = [
+  {k:"rank_actual", t:"#", num:true, titulo:"Posición del modelo"},
+  {k:"nombre", t:"Selección", num:false, titulo:"Nombre"},
+  {k:"confederacion", t:"Confederación", num:false, titulo:"Confederación"},
+  {k:"pos_fifa", t:"Rank FIFA", num:true, titulo:"Posición en el ranking FIFA"},
+  {k:"elo", t:"Elo", num:true, titulo:"Rating Elo derivado"},
+  {k:"rating_actual", t:"Rating modelo", num:true, titulo:"Rating del modelo"},
+  {k:"cambio_rank", t:"Cambio", num:true, titulo:"Cambio de posición desde el inicio"}
+];
+let ordEstado = {k:"rating_actual", dir:-1}; // default: Rating modelo desc
+let filtroConf = "ALL";
+
+function initRankings(){
+  DATOS.equipos.forEach(e=>{ e.cambio_rank = e.rank_inicial - e.rank_actual; });
+
+  // Chips de confederación
+  const chipsCont=$("#chips-conf"); chipsCont.innerHTML="";
+  const defs=[["ALL","Todas",null],...CONFEDS.map(c=>[c,c,c])];
+  defs.forEach(([id,label,conf])=>{
+    const b=document.createElement("button");
+    b.type="button"; b.className="chip"; b.dataset.id=id;
+    b.setAttribute("aria-pressed", id===filtroConf?"true":"false");
+    b.innerHTML=(conf?`<span class="dot" style="background:${colorConf(conf)}"></span>`:"")+esc(label);
+    b.addEventListener("click",()=>{ filtroConf=id; renderRankings(); });
+    chipsCont.appendChild(b);
+  });
+
+  // Cabecera
+  const cab=$("#cab-rk"); cab.innerHTML="";
+  COLS.forEach(c=>{
+    const th=document.createElement("th");
+    th.className="orden"+(c.num?" num":"");
+    th.setAttribute("scope","col");
+    th.dataset.k=c.k;
+    const btn=document.createElement("button");
+    btn.type="button"; btn.title=c.titulo;
+    btn.className=c.num?"right":"";
+    btn.innerHTML=`<span>${esc(c.t)}</span><span class="ind" aria-hidden="true">▼</span>`;
+    btn.addEventListener("click",()=>ordenarPor(c.k));
+    th.appendChild(btn);
+    cab.appendChild(th);
+  });
+  $("#f-busca").addEventListener("input",renderRankings);
+  renderRankings();
+}
+function ordenarPor(k){
+  if(ordEstado.k===k) ordEstado.dir*=-1;
+  else ordEstado={k, dir: (k==="nombre"||k==="confederacion")?1:-1};
+  renderRankings();
+}
+function renderRankings(){
+  const q=$("#f-busca").value.trim().toLowerCase();
+  let filas = DATOS.equipos.filter(e=>
+    (filtroConf==="ALL"||e.confederacion===filtroConf) &&
+    (!q||e.nombre.toLowerCase().includes(q)||e.codigo.toLowerCase().includes(q)));
+  const {k,dir}=ordEstado;
+  filas.sort((a,b)=>{
+    let va=a[k], vb=b[k];
+    if(typeof va==="string") return va.localeCompare(vb,"es")*dir;
+    return (va-vb)*dir;
+  });
+  // Cabecera aria-sort + indicador
+  document.querySelectorAll("#cab-rk th").forEach(th=>{
+    const activo=th.dataset.k===k;
+    th.setAttribute("aria-sort", activo ? (dir===1?"ascending":"descending") : "none");
+    th.querySelector(".ind").textContent = activo ? (dir===1?"▲":"▼") : "";
+  });
+  // Chips aria-pressed
+  document.querySelectorAll("#chips-conf .chip").forEach(b=>{
+    b.setAttribute("aria-pressed", b.dataset.id===filtroConf?"true":"false");
+  });
+
+  const tb=$("#cuerpo-rk"); tb.innerHTML="";
+  const frag=document.createDocumentFragment();
+  filas.forEach((e,i)=>{
+    const tr=document.createElement("tr");
+    tr.className = i%2 ? "impar" : "par";
+    tr.innerHTML =
+      `<td class="rank-cell">${e.rank_actual}</td>`+
+      `<td><span style="font-weight:600">${esc(e.nombre)}</span> <span class="codigo-mudo">${esc(e.codigo)}</span></td>`+
+      `<td>${dotHtml(e.confederacion)} ${esc(e.confederacion)}</td>`+
+      `<td class="num">#${e.pos_fifa}</td>`+
+      `<td class="num">${e.elo}</td>`+
+      `<td class="num strong">${Number(e.rating_actual).toFixed(1)}</td>`+
+      `<td class="num">${signoHtml(e.cambio_rank,0)}</td>`;
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+  $("#cuenta-rk").textContent = `${filas.length} selecciones`;
+}
+
+/* ==================================================================
+   VISTA — EQUIPO (resumen + línea SVG + tabla partido a partido)
+   ================================================================== */
+function initEquipo(){
+  const sel=$("#sel-equipo"); sel.innerHTML="";
+  CONFEDS.forEach(conf=>{
+    const og=document.createElement("optgroup");
+    og.label=conf;
+    DATOS.equipos.filter(e=>e.confederacion===conf).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"))
+      .forEach(e=>{
+        const o=document.createElement("option");
+        o.value=e.codigo; o.textContent=`${e.nombre} (${e.codigo})`;
+        og.appendChild(o);
+      });
+    sel.appendChild(og);
+  });
+  sel.addEventListener("change",()=>renderEquipo(sel.value));
+  const mejor=[...DATOS.equipos].sort((a,b)=>a.rank_actual-b.rank_actual)[0];
+  const inicial = DATOS.equipos.some(e=>e.codigo==="ARG") ? "ARG" : mejor.codigo;
+  sel.value=inicial; renderEquipo(inicial);
+}
+function renderEquipo(cod){
+  const e=DATOS.equipos.find(x=>x.codigo===cod);
+  const cont=$("#equipo-detalle");
+  if(!e){cont.innerHTML='<p class="vacio">Equipo no encontrado.</p>';return;}
+  const cc=colorConf(e.confederacion);
+  const deltaTorneo = e.delta;
+
+  const resumen =
+    `<div class="eq-resumen" style="--conf-color:${cc}">`+
+      `<div class="eq-badge" style="background:${cc}">${esc(e.codigo)}</div>`+
+      `<div style="flex:1 1 auto;min-width:150px">`+
+        `<div class="eq-nombre">${esc(e.nombre)}</div>`+
+        `<div class="eq-sub">${dotHtml(e.confederacion)}${esc(e.confederacion)} · grupo ${esc(e.grupo)}</div>`+
+      `</div>`+
+      `<div class="eq-stats">`+
+        `<div><div class="eq-stat-k">Rating actual</div><div class="eq-stat-v">${Number(e.rating_actual).toFixed(1)}</div></div>`+
+        `<div><div class="eq-stat-k">Rank modelo</div><div class="eq-stat-v">${e.rank_actual}</div></div>`+
+        `<div><div class="eq-stat-k">Cambio torneo</div><div class="eq-stat-v">${signoHtml(deltaTorneo,1)}</div></div>`+
+        `<div><div class="eq-stat-k">Partidos</div><div class="eq-stat-v">${e.historial.length}</div></div>`+
+      `</div>`+
+    `</div>`;
+
+  const chart =
+    `<div class="card-chart">`+
+      `<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">`+
+        `<h2>Rating del modelo por partido</h2>`+
+        `<div class="leyenda-cruce"><span class="ring"></span> cruce entre confederaciones</div>`+
+      `</div>`+
+      `<div style="margin-top:10px" id="chart-eq">${lineaRating(e,cc)}</div>`+
+    `</div>`;
+
+  cont.innerHTML = resumen + chart + tablaHistorial(e,cc) +
+    `<p class="placeholder-nota">Historial simulado (placeholder) — se reemplaza al conectar el JSON real del pipeline.</p>`;
+  cablearPuntos(e);
+}
+
+// Gráfico de línea SVG de la evolución del rating (marcador anillado en cruces).
+function lineaRating(e, colorEquipo){
+  const W=880, H=210, padL=46, padR=16, padT=16, padB=30;
+  const puntos = [{r:e.rating_inicial, etq:"Inicial", h:null, cruce:false}]
+    .concat(e.historial.map(h=>({r:h.rating_post, etq:h.fase, h, cruce:h.inter_confederacion})));
+  const rs=puntos.map(p=>p.r);
+  const min=Math.min(...rs)-8, max=Math.max(...rs)+8;
+  const n=puntos.length;
+  const x=i=> padL + (W-padL-padR)*(n===1?0.5:i/(n-1));
+  const y=r=> padT + (H-padT-padB)*(1-(r-min)/(max-min));
+  const gY=[min,(min+max)/2,max].map(v=>Math.round(v));
+  let grid="";
+  gY.forEach(v=>{
+    const yy=y(v);
+    grid+=`<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}" stroke="${cssVar('--line-soft')}" stroke-width="1"/>`+
+          `<text x="${padL-8}" y="${(yy+3).toFixed(1)}" text-anchor="end" font-size="11">${v}</text>`;
+  });
+  const dLine=puntos.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(p.r).toFixed(1)}`).join(" ");
+  const area=dLine+` L${x(n-1).toFixed(1)} ${H-padB} L${padL} ${H-padB} Z`;
+  let ejex="", pts="";
+  puntos.forEach((p,i)=>{
+    ejex+=`<text x="${x(i).toFixed(1)}" y="${(H-padB+16).toFixed(1)}" text-anchor="middle" font-size="11">${esc(p.etq)}</text>`;
+    const r = p.cruce?5:3.5;
+    const fill = p.cruce?"#FBF3DA":colorEquipo;
+    const stroke = p.cruce?cssVar('--cross'):colorEquipo;
+    pts+=`<circle class="pt" cx="${x(i).toFixed(1)}" cy="${y(p.r).toFixed(1)}" r="${r}" `+
+      `fill="${fill}" stroke="${stroke}" stroke-width="${p.cruce?2:1}" `+
+      `tabindex="0" role="img" data-i="${i}" aria-label="${esc(ariaPunto(e,p))}"><title>${esc(ariaPunto(e,p))}</title></circle>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del rating de ${esc(e.nombre)} partido a partido" style="overflow:visible">`+
+    `<title>Evolución del rating de ${esc(e.nombre)}</title>${grid}`+
+    `<path d="${area}" fill="${colorEquipo}" opacity="0.07"/>`+
+    `<path d="${dLine}" fill="none" stroke="${colorEquipo}" stroke-width="2"/>`+
+    `${pts}${ejex}</svg>`;
+}
+function ariaPunto(e,p){
+  if(!p.h) return `Inicial: rating ${e.rating_inicial.toFixed(1)}`;
+  const h=p.h;
+  return `${h.fase}, vs ${h.rival_nombre}: ${h.resultado} ${h.gf}-${h.ga}, rating ${h.rating_post.toFixed(1)}, cambio ${fmtSigno(h.delta_r,1)}`+
+    (h.inter_confederacion?", cruce entre confederaciones":"");
+}
+// Tooltip al pasar/enfocar puntos.
+function cablearPuntos(e){
+  const tt=$("#tooltip");
+  const puntos=[{r:e.rating_inicial,h:null}].concat(e.historial.map(h=>({r:h.rating_post,h})));
+  document.querySelectorAll("#chart-eq .pt").forEach(el=>{
+    const i=+el.dataset.i, p=puntos[i];
+    const mostrar=(ev)=>{
+      let html;
+      if(i===0){html=`<b>Inicial</b><br>Rating ${e.rating_inicial.toFixed(1)}`;}
+      else{const h=p.h;
+        html=`<b>${esc(h.fase)}</b>`+
+          `<br>vs ${esc(h.rival_nombre)} — <strong>${h.resultado} ${h.gf}-${h.ga}</strong>`+
+          `<br>Importancia ${h.I} · Factor de goles ${h.G.toFixed(2)} · W−We ${fmtSigno(h.W-h.We,2)}`+
+          `<br>Cambio de rating ${fmtSigno(h.delta_r,1)} → rating ${h.rating_post.toFixed(1)} · rank ${h.rank_post}`+
+          (h.inter_confederacion?`<br><span style="color:var(--cross-text)">⇄ cruce entre confederaciones</span>`:"");
+      }
+      tt.innerHTML=html; tt.classList.add("on");
+      const r=el.getBoundingClientRect();
+      let cx=(ev&&ev.clientX!=null)?ev.clientX:r.left+r.width/2;
+      let cy=r.top;
+      tt.style.left=Math.min(cx+12, innerWidth-tt.offsetWidth-8)+"px";
+      tt.style.top=Math.max(8, cy-tt.offsetHeight-10)+"px";
+    };
+    const ocultar=()=>tt.classList.remove("on");
+    el.addEventListener("mousemove",mostrar);
+    el.addEventListener("mouseenter",mostrar);
+    el.addEventListener("mouseleave",ocultar);
+    el.addEventListener("focus",mostrar);
+    el.addEventListener("blur",ocultar);
+  });
+}
+// Tabla partido a partido.
+function tablaHistorial(e, colorEquipo){
+  if(!e.historial.length) return '<p class="vacio">Sin partidos registrados.</p>';
+  let filas="";
+  e.historial.forEach((h,i)=>{
+    const clase = h.inter_confederacion ? "cruce" : (i%2?"impar":"par");
+    filas+=`<tr class="${clase}">`+
+      `<td style="font-weight:600;color:#4A4740">${esc(h.fase)}</td>`+
+      `<td>${dotHtml(h.rival_confederacion)} <span style="font-weight:600">${esc(h.rival_nombre)}</span> <span class="codigo-mudo">${esc(h.rival)}</span>`+
+        (h.inter_confederacion?` <span style="color:var(--cross-text);font-weight:700" title="Cruce entre confederaciones">⇄</span>`:"")+`</td>`+
+      `<td class="num strong" style="text-align:center">${h.gf}–${h.ga}</td>`+
+      `<td class="num">${h.I}</td>`+
+      `<td class="num">${h.G.toFixed(2)}</td>`+
+      `<td class="num">${signoHtml(h.W-h.We,2)}</td>`+
+      `<td class="num">${signoHtml(h.delta_r,1)}</td>`+
+      `<td class="num strong">${h.rating_post.toFixed(1)}</td>`+
+      `<td class="num">${h.rank_post}</td>`+
+    `</tr>`;
+  });
+  return `<div class="tabla-wrap" style="margin-top:16px"><table class="datos partidos" aria-label="Historial partido a partido de ${esc(e.nombre)}"><thead><tr>`+
+    `<th title="">Fase</th><th title="">Rival</th><th class="num" style="text-align:center" title="Goles a favor – en contra">Marcador</th>`+
+    `<th class="num" title="Ponderación de la fase">Importancia</th><th class="num" title="Multiplicador por margen">Factor de goles</th>`+
+    `<th class="num" title="Sorpresa: observado − esperado">W−We</th><th class="num" title="Cambio de rating del partido">Cambio rating</th>`+
+    `<th class="num" title="Rating tras el partido">Rating</th><th class="num" title="Posición tras el partido">Rank</th>`+
+    `</tr></thead><tbody>${filas}</tbody></table></div>`+
+    `<p class="foot-nota">Filas con <span style="color:var(--cross-text);font-weight:700">⇄</span> = cruce entre confederaciones. W−We = resultado observado menos esperado (sorpresa). Cambio de rating = variación del rating del partido. Importancia = ponderación de la fase.</p>`;
+}
+
+/* ==================================================================
+   VISTA — METODOLOGÍA (definiciones verbatim del handoff)
+   ================================================================== */
+const METODOLOGIA = [
+  { titulo:"Rankings y ratings", terminos:[
+    {t:"Rank FIFA", d:"Posición oficial de la selección en el ranking FIFA vigente en la fecha de corte de los datos."},
+    {t:"Elo", d:"Rating Elo estimado a partir de los puntos FIFA, en la escala habitual de este sistema (aprox. 1300–2100)."},
+    {t:"Rating del modelo", d:"Rating propio del modelo, ajustado según el desempeño observado en el torneo. Determina el orden en Rankings."},
+    {t:"# (rank del modelo)", d:"Posición de la selección al ordenar todas las selecciones por rating del modelo, de mayor a menor."},
+    {t:"Cambio", d:"Variación de la posición del modelo respecto a la actualización anterior. Verde y ▲ significa que asciende; rojo y ▼, que desciende."}
+  ]},
+  { titulo:"Confederaciones", terminos:[
+    {t:"Rating promedio · inicial → actual", d:"Promedio del rating de las selecciones de la confederación antes del torneo y en el corte actual."},
+    {t:"Observado / esperado", d:"Puntos de rating que la confederación ganó o cedió realmente en sus cruces contra otras confederaciones, frente a lo que el modelo esperaba según las probabilidades previas al partido."},
+    {t:"Transferencia neta", d:"Balance total (puntos ganados menos puntos cedidos) de rating en los cruces de esa confederación con otras."}
+  ]},
+  { titulo:"Equipo · línea de tiempo", terminos:[
+    {t:"Importancia", d:"Ponderación asignada a la fase del torneo en el cálculo del cambio de rating: la fase de grupos pesa menos que una instancia eliminatoria."},
+    {t:"Factor de goles", d:"Multiplicador aplicado según el margen de gol del resultado: una goleada pesa más que un triunfo mínimo."},
+    {t:"Sorpresa (W−We)", d:"Diferencia entre el resultado observado (W: 1 victoria, 0,5 empate, 0 derrota) y el resultado esperado por el modelo antes del partido (We, según la diferencia de rating entre ambos equipos)."},
+    {t:"Cambio de rating", d:"Variación del rating de la selección tras ese partido puntual, resultado de combinar importancia, factor de goles y sorpresa."},
+    {t:"Cruce entre confederaciones", d:"Partido entre selecciones de distinta confederación. Se resalta porque es el mecanismo que transfiere rating de un bloque continental a otro."}
+  ]}
+];
+function initMetodologia(){
+  const grid=$("#grid-metodologia"); grid.innerHTML="";
+  METODOLOGIA.forEach(grp=>{
+    const card=document.createElement("div");
+    card.className="card-simple";
+    let terms=grp.terminos.map(t=>`<div class="term"><div class="t">${esc(t.t)}</div><div class="d">${esc(t.d)}</div></div>`).join("");
+    card.innerHTML=`<h2>${esc(grp.titulo)}</h2>${terms}`;
+    grid.appendChild(card);
+  });
+}
+
+/* ==================================================================
+   VISTA — TOKENS (guía de estilo replicable)
+   ================================================================== */
+function initTokens(){
+  const tokConf=$("#tok-conf"); tokConf.innerHTML="";
+  CONFEDS.forEach(id=>{
+    tokConf.innerHTML+=`<div class="tok-row"><span class="tok-swatch" style="background:${colorConf(id)}"></span>`+
+      `<span class="tok-name">${esc(id)}</span><code class="tok-hex">${colorConf(id)}</code></div>`;
+  });
+
+  const funcTokens=[
+    ["--ink","#16181D","Texto principal"],["--paper","#FFFFFF","Fondo de tablas y tarjetas"],
+    ["--bg","#FCFBF7","Fondo de página (papel cálido)"],["--header","#10294F","Cabecera / azul marino del emblema"],
+    ["--accent","#C8202B","Acento / rojo del emblema"],["--pos","#1C7A44","Cambio positivo (ascenso)"],
+    ["--neg","#C8202B","Cambio negativo (descenso)"],["--cross","#E0A81E","Resalte de cruce entre confederaciones"],
+    ["--line","#E4DCC9","Bordes y divisores"],["--muted","#6E6A61","Texto secundario"]
+  ];
+  const tokFunc=$("#tok-func"); tokFunc.innerHTML="";
+  funcTokens.forEach(([name,hex,use])=>{
+    tokFunc.innerHTML+=`<div class="tok-row"><span class="tok-swatch" style="background:${hex}"></span>`+
+      `<div style="flex:1"><div class="tok-name" style="font-size:12px">${name}</div><div class="tok-name-use">${esc(use)}</div></div>`+
+      `<code class="tok-hex">${hex}</code></div>`;
+  });
+
+  const typeTokens=[
+    ["700 · 19px","font-size:19px;font-weight:700;letter-spacing:-0.005em"],
+    ["700 · 15px","font-size:15px;font-weight:700"],
+    ["600 · 12.5px","font-size:12.5px;font-weight:600"],
+    ["400 · 12.5px · tablas","font-size:12.5px;font-weight:400;font-variant-numeric:tabular-nums"],
+    ["500 · 11px · etiqueta","font-size:11px;font-weight:500;letter-spacing:0.12em;color:#C8202B"],
+    ["300 · 12px · nota","font-size:12px;font-weight:300;color:#6E6A61"]
+  ];
+  const tokType=$("#tok-type"); tokType.innerHTML="";
+  typeTokens.forEach(([spec,style])=>{
+    tokType.innerHTML+=`<div class="tok-row" style="align-items:baseline"><span style="${style}">Selección 2026</span>`+
+      `<span style="margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap;text-align:right">${spec}</span></div>`;
+  });
+
+  const spaceTokens=[["--space-1",4],["--space-2",8],["--space-3",12],["--space-4",16],["--space-5",24],["--space-6",32],["--space-7",48]];
+  const tokSpace=$("#tok-space"); tokSpace.innerHTML="";
+  spaceTokens.forEach(([name,px])=>{
+    tokSpace.innerHTML+=`<div class="tok-row" style="padding:5px 0"><code class="tok-space-name">${name}</code>`+
+      `<span class="tok-bar" style="width:${px}px"></span><span class="tok-space-px">${px}px</span></div>`;
+  });
+
+  $("#tok-notas").innerHTML =
+    `<li><strong>Ranking FIFA</strong> y <strong>selecciones/grupos</strong>: datos reales aportados (corte 11·06·2026), desde <code>20_insumos/</code>.</li>`+
+    `<li><strong>Elo</strong>: reescalado lineal de los puntos FIFA — <code style="color:var(--muted)">round(1300 + (pts − min) / (max − min) × 700)</code>. Placeholder hasta enchufar el Elo real del motor.</li>`+
+    `<li><strong>Rating del modelo</strong>: en este MOCK se simula un torneo completo (grupos + eliminatorias) partido a partido con un modelo tipo Elo/FIFA SUM determinista (semilla fija). En producción lo calcula <code>30_procesamiento/33_motor_elo.R</code>.</li>`+
+    `<li><strong>Historial, cambios y cruces</strong>: valores simulados hasta el corte disponible. Se reemplazan por los reales al conectar <code>40_salidas/datos_interfaz.json</code>.</li>`;
+}
+
+/* ==================================================================
+   NAVEGACIÓN POR TABS (accesible, teclado)
+   ================================================================== */
+const TABS=[
+  ["tab-conf","panel-conf"], ["tab-rankings","panel-rankings"], ["tab-equipo","panel-equipo"],
+  ["tab-metodologia","panel-metodologia"], ["tab-tokens","panel-tokens"]
+];
+function activarTab(idx, foco){
+  TABS.forEach(([tb,pn],i)=>{
+    const t=document.getElementById(tb), p=document.getElementById(pn);
+    const on=i===idx;
+    t.setAttribute("aria-selected",on?"true":"false");
+    t.tabIndex=on?0:-1;
+    p.classList.toggle("oculto",!on);
+    if(on&&foco) t.focus();
+  });
+}
+function initTabs(){
+  TABS.forEach(([tb],i)=>{
+    const t=document.getElementById(tb);
+    t.addEventListener("click",()=>activarTab(i));
+    t.addEventListener("keydown",e=>{
+      let n=null;
+      if(e.key==="ArrowRight"||e.key==="ArrowDown") n=(i+1)%TABS.length;
+      else if(e.key==="ArrowLeft"||e.key==="ArrowUp") n=(i-1+TABS.length)%TABS.length;
+      else if(e.key==="Home") n=0; else if(e.key==="End") n=TABS.length-1;
+      if(n!==null){e.preventDefault(); activarTab(n,true);}
+    });
+  });
+}
+
+/* ==================================================================
+   ARRANQUE
+   ================================================================== */
+function iniciar(){
+  pintarCabecera();
+  initTabs();
+  initConfeds();
+  initRankings();
+  initEquipo();
+  initMetodologia();
+  initTokens();
+}
+cargar();
+</script>
+</body>
+</html>

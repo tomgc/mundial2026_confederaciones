@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#FCFBF7;color:#16181D;font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  *{box-sizing:border-box;}
+  :focus-visible{outline:2px solid #C8202B;outline-offset:2px;}
+  ::selection{background:#F2D34E;color:#10294F;}
+  ::-webkit-scrollbar{height:10px;width:10px;}
+  ::-webkit-scrollbar-track{background:#EFEAE0;}
+  ::-webkit-scrollbar-thumb{background:#C7BEAD;}
+  ::-webkit-scrollbar-thumb:hover{background:#ABA089;}
+  table{border-collapse:collapse;}
+  button{font-family:inherit;cursor:pointer;}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#FCFBF7">
+
+  <header style="background:#10294F;color:#F4F1E8;position:sticky;top:0;z-index:20;border-bottom:3px solid #C8202B">
+    <div style="max-width:1260px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="position:relative;width:44px;height:44px;flex:none" aria-hidden="true">
+        <span style="position:absolute;width:21px;height:21px;top:0;left:9px;transform:rotate(22deg);background:#C8202B;border:1px solid rgba(124,138,160,0.4);border-radius:1px;z-index:1"></span>
+        <span style="position:absolute;width:21px;height:21px;top:9px;left:0;transform:rotate(-10deg);background:#F4F1E8;border:1px solid rgba(124,138,160,0.4);border-radius:1px;z-index:2"></span>
+        <span style="position:absolute;width:21px;height:21px;top:17px;left:14px;transform:rotate(9deg);background:#1C7A44;border:1px solid rgba(124,138,160,0.4);border-radius:1px;z-index:3"></span>
+      </div>
+      <div style="flex:1 1 280px">
+        <div style="font-size:12px;letter-spacing:0.14em;color:#9DB3D0;font-weight:500">Análisis retrospectivo por confederación</div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:0.005em;line-height:1.2">Modelo de evaluación del desempeño de selecciones</div>
+      </div>
+      <div style="font-size:11px;color:#9DB3D0;text-align:right;line-height:1.55">48 selecciones · 6 confederaciones · 12 grupos<br>Datos hasta el corte disponible · base FIFA 11·06·2026</div>
+    </div>
+    <nav aria-label="Vistas del panel" style="max-width:1260px;margin:0 auto;padding:0 18px;display:flex;gap:0;flex-wrap:wrap">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+        <button type="button" onClick="{{ n.onClick }}" aria-current="{{ n.current }}" style="{{ n.style }}">{{ n.label }}</button>
+      </sc-for>
+    </nav>
+  </header>
+
+  <main style="flex:1;max-width:1260px;margin:0 auto;padding:26px 22px 60px;width:100%">
+
+    <!-- ================= RANKINGS ================= -->
+    <sc-if value="{{ isRankings }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Rankings" data-screen-label="Rankings">
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;letter-spacing:0.12em;font-weight:600;color:#C8202B">Rankings</div>
+        <h1 style="font-size:19px;font-weight:700;margin:5px 0 0;letter-spacing:-0.005em">Clasificación general del modelo</h1>
+        <p style="font-size:12.5px;color:#6E6A61;margin:7px 0 0;line-height:1.6;max-width:74ch">Ordena por cualquier columna. <strong style="color:#16181D;font-weight:600">#</strong> es la posición del modelo · <strong style="color:#16181D;font-weight:600">Cambio</strong> es la variación de posición frente a la actualización anterior.</p>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <input type="search" value="{{ query }}" onInput="{{ onQuery }}" placeholder="Buscar selección…" aria-label="Buscar selección por nombre" style="font-family:inherit;font-size:13px;padding:8px 12px;border:1px solid #C7BEAD;background:#fff;color:#16181D;width:220px;border-radius:2px">
+        <div role="group" aria-label="Filtrar por confederación" style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="7">
+            <button type="button" onClick="{{ c.onClick }}" aria-pressed="{{ c.pressed }}" style="{{ c.style }}"><span style="{{ c.dot }}"></span>{{ c.code }}</button>
+          </sc-for>
+        </div>
+        <div style="margin-left:auto;font-size:12px;color:#6E6A61;white-space:nowrap">{{ resultCount }} selecciones</div>
+      </div>
+
+      <div style="overflow:auto;border:1px solid #E4DCC9;background:#fff;max-height:66vh">
+        <table style="width:100%;font-size:12.5px;min-width:780px">
+          <thead>
+            <tr>
+              <sc-for list="{{ headers }}" as="h" hint-placeholder-count="7">
+                <th scope="col" aria-sort="{{ h.aria }}" style="{{ h.thStyle }}">
+                  <button type="button" onClick="{{ h.onClick }}" title="{{ h.title }}" style="{{ h.btnStyle }}"><span>{{ h.label }}</span><span style="{{ h.indStyle }}">{{ h.ind }}</span></button>
+                </th>
+              </sc-for>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="14">
+              <tr style="{{ r.rowStyle }}">
+                <td style="{{ r.rankStyle }}">{{ r.rank }}</td>
+                <td style="{{ tdName }}"><span style="font-weight:600">{{ r.name }}</span> <span style="{{ codeStyle }}">{{ r.code }}</span></td>
+                <td style="{{ tdConf }}"><span style="{{ r.dot }}"></span>{{ r.conf }}</td>
+                <td style="{{ tdNum }}">{{ r.fifa }}</td>
+                <td style="{{ tdNum }}">{{ r.elo }}</td>
+                <td style="{{ tdModel }}">{{ r.model }}</td>
+                <td style="{{ tdNum }}"><span style="{{ r.deltaStyle }}">{{ r.deltaArrow }} {{ r.deltaLabel }}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:11px;color:#6E6A61;margin-top:10px;line-height:1.6">Cambio: <span style="color:#1C7A44;font-weight:600">▲ verde</span> = ascenso · <span style="color:#C8202B;font-weight:600">▼ rojo</span> = descenso. Elo y rating del modelo derivados del ranking FIFA — ver pestaña <strong style="color:#6E6A61">Tokens</strong>.</p>
+    </section>
+    </sc-if>
+
+    <!-- ================= CONFEDERACIONES ================= -->
+    <sc-if value="{{ isConf }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Confederaciones" data-screen-label="Confederaciones">
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;letter-spacing:0.12em;font-weight:600;color:#C8202B">Confederaciones</div>
+        <h1 style="font-size:19px;font-weight:700;margin:5px 0 0;letter-spacing:-0.005em">Rendimiento agregado por confederación</h1>
+        <p style="font-size:12.5px;color:#6E6A61;margin:7px 0 0;line-height:1.6;max-width:74ch">Rating promedio inicial vs. actual, desempeño observado frente al esperado por el modelo, y transferencia neta de rating en los cruces entre confederaciones.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(322px,1fr));gap:15px">
+        <sc-for list="{{ cards }}" as="c" hint-placeholder-count="6">
+          <article style="border:1px solid #E4DCC9;background:#fff;border-top:3px solid;border-top-color:{{ c.color }};padding:16px 18px">
+            <div style="display:flex;align-items:center;gap:9px;border-bottom:1px solid #EFE8D6;padding-bottom:10px">
+              <span style="{{ c.dot }}"></span>
+              <span style="font-size:15px;font-weight:700;letter-spacing:0.01em">{{ c.name }}</span>
+              <span style="margin-left:auto;font-size:11px;color:#6E6A61">{{ c.teamsLabel }}</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin:13px 0 2px;flex-wrap:wrap">
+              <span style="font-size:13px;color:#6E6A61;font-variant-numeric:tabular-nums">{{ c.ini }}</span>
+              <span style="font-size:13px;color:#6E6A61">→</span>
+              <span style="font-size:26px;font-weight:700;letter-spacing:-0.01em;font-variant-numeric:tabular-nums">{{ c.act }}</span>
+              <span style="{{ c.deltaStyle }};font-size:13px;margin-left:2px">{{ c.deltaArrow }} {{ c.deltaLabel }}</span>
+            </div>
+            <div style="font-size:11px;letter-spacing:0.04em;color:#6E6A61;margin-bottom:13px">Rating promedio · inicial → actual</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;border-top:1px solid #EFE8D6;padding-top:12px">
+              <div>
+                <div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61;margin-bottom:5px">Observado / esperado</div>
+                <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">{{ c.obs }} <span style="color:#6E6A61;font-weight:400">/ {{ c.exp }}</span> <span style="{{ c.oeStyle }};font-size:12px">{{ c.oe }}</span></div>
+                <div style="font-size:11px;color:#6E6A61;margin-top:2px">puntos en cruces</div>
+              </div>
+              <div>
+                <div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61;margin-bottom:5px">Transferencia neta</div>
+                <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums"><span style="{{ c.netStyle }}">{{ c.netArrow }} {{ c.net }}</span></div>
+                <div style="font-size:11px;color:#6E6A61;margin-top:2px">puntos de rating</div>
+              </div>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+
+      <div style="margin-top:22px;border:1px solid #E4DCC9;background:#fff;padding:20px">
+        <h2 style="font-size:15px;font-weight:700;margin:0">Cambio de rating por confederación</h2>
+        <p style="font-size:12px;color:#6E6A61;margin:5px 0 18px">Cambio neto de rating promedio (actual − inicial). Barras divergentes desde el eje cero.</p>
+        <div style="display:grid;grid-template-columns:112px 1fr 54px;gap:12px;margin-bottom:9px">
+          <div></div>
+          <div style="position:relative;height:14px;font-size:11px;color:#6E6A61">
+            <span style="position:absolute;left:0">↤ desciende</span>
+            <span style="position:absolute;left:50%;transform:translateX(-50%);color:#6E6A61">0</span>
+            <span style="position:absolute;right:0">asciende ↦</span>
+          </div>
+          <div></div>
+        </div>
+        <sc-for list="{{ bars }}" as="b" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:112px 1fr 54px;gap:12px;align-items:center;margin:7px 0">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600"><span style="{{ b.dot }}"></span>{{ b.code }}</div>
+            <div style="position:relative;height:22px;background:#FAF7EF;border:1px solid #EFE8D6">
+              <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#C7BEAD"></div>
+              <div style="{{ b.barStyle }}"></div>
+            </div>
+            <div style="{{ b.valStyle }};text-align:right;font-size:13px;font-variant-numeric:tabular-nums">{{ b.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ================= EQUIPO ================= -->
+    <sc-if value="{{ isTeam }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Línea de tiempo del equipo" data-screen-label="Equipo">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;letter-spacing:0.12em;font-weight:600;color:#C8202B">Equipo · línea de tiempo</div>
+          <h1 style="font-size:19px;font-weight:700;margin:5px 0 0;letter-spacing:-0.005em">Evolución del rating partido a partido</h1>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label for="team-select" style="font-size:11px;letter-spacing:0.05em;color:#6E6A61">Seleccionar equipo</label>
+          <select id="team-select" value="{{ selectedTeam }}" onChange="{{ onTeamChange }}" aria-label="Seleccionar equipo" style="font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #C7BEAD;background:#fff;color:#16181D;border-radius:2px;min-width:240px">
+            <sc-for list="{{ teamOptions }}" as="g" hint-placeholder-count="6">
+              <optgroup label="{{ g.label }}">
+                <sc-for list="{{ g.teams }}" as="o" hint-placeholder-count="4">
+                  <option value="{{ o.code }}">{{ o.label }}</option>
+                </sc-for>
+              </optgroup>
+            </sc-for>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:20px;align-items:center;border:1px solid #E4DCC9;background:#fff;border-left:4px solid;border-left-color:{{ team.color }};padding:16px 20px;flex-wrap:wrap">
+        <div style="background:{{ team.color }};width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:0.02em;border-radius:2px;flex:none">{{ team.code }}</div>
+        <div style="flex:1 1 auto;min-width:150px">
+          <div style="font-size:18px;font-weight:700">{{ team.name }}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11.5px;color:#6E6A61"><span style="{{ team.confDot }}"></span>{{ team.conf }} · grupo {{ team.group }}</div>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div><div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61">Rating actual</div><div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ team.ratingNow }}</div></div>
+          <div><div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61">Rank modelo</div><div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ team.rankNow }}</div></div>
+          <div><div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61">Cambio torneo</div><div style="{{ team.deltaTourStyle }};font-size:22px;font-variant-numeric:tabular-nums">{{ team.deltaTourArrow }} {{ team.deltaTour }}</div></div>
+          <div><div style="font-size:11px;letter-spacing:0.03em;color:#6E6A61">Partidos</div><div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ team.nMatches }}</div></div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #E4DCC9;background:#fff;padding:16px 20px;margin-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+          <h2 style="font-size:14px;font-weight:700;margin:0">Rating del modelo por partido</h2>
+          <div style="font-size:11px;color:#6E6A61;display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #E0A81E;background:#FBF3DA"></span> cruce entre confederaciones</div>
+        </div>
+        <div style="margin-top:10px">{{ chartEl }}</div>
+      </div>
+
+      <div style="overflow:auto;border:1px solid #E4DCC9;background:#fff;margin-top:16px">
+        <table style="width:100%;font-size:12px;min-width:860px">
+          <thead>
+            <tr>
+              <sc-for list="{{ matchHeaders }}" as="m" hint-placeholder-count="9">
+                <th scope="col" style="{{ m.style }}" title="{{ m.title }}">{{ m.label }}</th>
+              </sc-for>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ matchRows }}" as="r" hint-placeholder-count="6">
+              <tr style="{{ r.rowStyle }}">
+                <td style="{{ r.faseStyle }}">{{ r.fase }}</td>
+                <td style="{{ mtdRival }}"><span style="{{ r.rivalDot }}"></span><span style="font-weight:600">{{ r.rival }}</span> <span style="{{ codeStyle }}">{{ r.rivalCode }}</span> <span style="{{ r.crossBadge }}" title="Cruce entre confederaciones">{{ r.crossMark }}</span></td>
+                <td style="{{ r.scoreStyle }}">{{ r.score }}</td>
+                <td style="{{ mtdNum }}">{{ r.imp }}</td>
+                <td style="{{ mtdNum }}">{{ r.goalFactor }}</td>
+                <td style="{{ mtdNum }}"><span style="{{ r.surpriseStyle }}">{{ r.surprise }}</span></td>
+                <td style="{{ mtdNum }}"><span style="{{ r.drStyle }}">{{ r.dr }}</span></td>
+                <td style="{{ mtdNumStrong }}">{{ r.rating }}</td>
+                <td style="{{ mtdNum }}">{{ r.rankAfter }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:11px;color:#6E6A61;margin-top:10px;line-height:1.6">Filas con <span style="color:#B4820E;font-weight:600">⇄</span> = cruce entre confederaciones. W−We = resultado observado menos esperado (sorpresa). ΔR = cambio de rating del partido. Importancia = ponderación de la fase.</p>
+    </section>
+    </sc-if>
+
+    <!-- ================= METODOLOGÍA ================= -->
+    <sc-if value="{{ isMetodologia }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Metodología" data-screen-label="Metodología">
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;letter-spacing:0.12em;font-weight:600;color:#C8202B">Metodología</div>
+        <h1 style="font-size:19px;font-weight:700;margin:5px 0 0;letter-spacing:-0.005em">Qué significa cada indicador</h1>
+        <p style="font-size:12.5px;color:#6E6A61;margin:7px 0 0;line-height:1.6;max-width:74ch">Definiciones de los términos usados en Rankings, Confederaciones y Equipo.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+        <sc-for list="{{ methodGroups }}" as="grp" hint-placeholder-count="3">
+          <div style="border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+            <h2 style="font-size:13px;font-weight:700;margin:0 0 14px;letter-spacing:0.01em;color:#10294F">{{ grp.title }}</h2>
+            <sc-for list="{{ grp.terms }}" as="t" hint-placeholder-count="5">
+              <div style="padding:9px 0;border-bottom:1px solid #F3EEE0">
+                <div style="font-size:12.5px;font-weight:700;color:#16181D">{{ t.term }}</div>
+                <div style="font-size:12px;color:#6E6A61;line-height:1.55;margin-top:3px">{{ t.def }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ================= TOKENS ================= -->
+    <sc-if value="{{ isTokens }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Tokens de diseño" data-screen-label="Tokens">
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;letter-spacing:0.12em;font-weight:600;color:#C8202B">Tokens</div>
+        <h1 style="font-size:19px;font-weight:700;margin:5px 0 0;letter-spacing:-0.005em">Sistema para replicar en HTML/CSS puro</h1>
+        <p style="font-size:12.5px;color:#6E6A61;margin:7px 0 0;line-height:1.6;max-width:74ch">Paleta derivada del emblema del Mundial 2026 (rojo, azul marino, verde) extendida a seis confederaciones. Sin frameworks: variables CSS y una sola familia monoespaciada.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+
+        <div style="border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+          <h2 style="font-size:13px;font-weight:700;margin:0 0 14px;letter-spacing:0.01em">Color · confederaciones</h2>
+          <sc-for list="{{ tokenConf }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid #F3EEE0">
+              <span style="width:30px;height:30px;border-radius:2px;flex:none;background:{{ t.hex }}"></span>
+              <span style="font-size:12.5px;font-weight:600;flex:1">{{ t.name }}</span>
+              <code style="font-size:12px;color:#6E6A61">{{ t.hex }}</code>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+          <h2 style="font-size:13px;font-weight:700;margin:0 0 14px;letter-spacing:0.01em">Color · funcional</h2>
+          <sc-for list="{{ tokenFunc }}" as="t" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid #F3EEE0">
+              <span style="width:30px;height:30px;border-radius:2px;flex:none;background:{{ t.hex }};border:1px solid #E4DCC9"></span>
+              <div style="flex:1"><div style="font-size:12px;font-weight:600">{{ t.name }}</div><div style="font-size:11px;color:#6E6A61">{{ t.use }}</div></div>
+              <code style="font-size:12px;color:#6E6A61">{{ t.hex }}</code>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+          <h2 style="font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.01em">Tipografía</h2>
+          <p style="font-size:11px;color:#6E6A61;margin:0 0 14px;line-height:1.55">IBM Plex Mono — 300 / 400 / 600 / 700. Números tabulares en todas las tablas.</p>
+          <sc-for list="{{ tokenType }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid #F3EEE0">
+              <span style="{{ t.sample }}">Selección 2026</span>
+              <span style="margin-left:auto;font-size:11px;color:#6E6A61;white-space:nowrap;text-align:right">{{ t.spec }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+          <h2 style="font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.01em">Espaciado · escala base 4 px</h2>
+          <p style="font-size:11px;color:#6E6A61;margin:0 0 14px;line-height:1.55">Múltiplos de 4. Usados en padding, gap y márgenes.</p>
+          <sc-for list="{{ tokenSpace }}" as="t" hint-placeholder-count="7">
+            <div style="display:flex;align-items:center;gap:12px;padding:5px 0">
+              <code style="font-size:11px;color:#6E6A61;width:76px;flex:none">{{ t.name }}</code>
+              <span style="{{ t.bar }}"></span>
+              <span style="font-size:11px;color:#6E6A61;margin-left:auto">{{ t.px }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+      </div>
+
+      <div style="margin-top:16px;border:1px solid #E4DCC9;background:#fff;padding:18px 20px">
+        <h2 style="font-size:13px;font-weight:700;margin:0 0 12px;letter-spacing:0.01em">Notas de derivación de datos</h2>
+        <ul style="font-size:12px;color:#4A4740;line-height:1.75;margin:0;padding-left:18px">
+          <li><strong>Ranking FIFA</strong> y <strong>selecciones/grupos</strong>: datos reales aportados (corte 11·06·2026).</li>
+          <li><strong>Elo</strong>: reescalado lineal de los puntos FIFA — <code style="color:#6E6A61">round(1300 + (pts − 1275) × 1,15)</code>.</li>
+          <li><strong>Rating del modelo</strong>: puntos FIFA más un ajuste de forma acotado (±40) derivado de forma determinista por selección; el rank del modelo surge de ordenar ese rating.</li>
+          <li><strong>Cambio, línea de tiempo y cruces</strong>: valores retrospectivos ilustrativos hasta el corte disponible. Reemplazables por los reales al actualizar cada ronda.</li>
+        </ul>
+      </div>
+    </section>
+    </sc-if>
+
+  </main>
+
+  <footer style="border-top:1px solid #E4DCC9;background:#F6F1E6;padding:14px 22px">
+    <div style="max-width:1260px;margin:0 auto;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:#6E6A61">
+      <span>Modelo de evaluación del desempeño de selecciones · Mundial 2026</span>
+      <span>Análisis retrospectivo — se actualiza por ronda</span>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { view: 'confederaciones', sortKey: 'model', sortDir: 'desc', query: '', conf: 'ALL', team: 'ARG' };
+
+  // ---------- static data ----------
+  CONF_ORDER = ['UEFA','CONMEBOL','CONCACAF','CAF','AFC','OFC'];
+  CONF_COLOR = { UEFA:'#10294F', CONMEBOL:'#C77D0E', CONCACAF:'#C8202B', CAF:'#1C7A44', AFC:'#0E7C86', OFC:'#6A3D7A' };
+
+  RAW = [
+    ['MEX','México','CONCACAF','A',14,1687.48],['RSA','Sudáfrica','CAF','A',60,1428.38],['KOR','Corea del Sur','AFC','A',25,1591.63],['CZE','Chequia','UEFA','A',40,1505.74],
+    ['CAN','Canadá','CONCACAF','B',30,1559.48],['BIH','Bosnia y Herzegovina','UEFA','B',64,1387.22],['QAT','Catar','AFC','B',56,1450.31],['SUI','Suiza','UEFA','B',19,1650.06],
+    ['BRA','Brasil','CONMEBOL','C',6,1765.86],['MAR','Marruecos','CAF','C',7,1755.10],['HAI','Haití','CONCACAF','C',83,1293.10],['SCO','Escocia','UEFA','C',42,1503.34],
+    ['USA','Estados Unidos','CONCACAF','D',17,1671.23],['PAR','Paraguay','CONMEBOL','D',41,1505.35],['AUS','Australia','AFC','D',27,1579.34],['TUR','Turquía','UEFA','D',22,1605.73],
+    ['GER','Alemania','UEFA','E',10,1735.77],['CUW','Curazao','CONCACAF','E',82,1294.77],['CIV','Costa de Marfil','CAF','E',33,1540.87],['ECU','Ecuador','CONMEBOL','E',23,1598.52],
+    ['NED','Países Bajos','UEFA','F',8,1753.57],['JPN','Japón','AFC','F',18,1661.58],['SWE','Suecia','UEFA','F',38,1509.79],['TUN','Túnez','CAF','F',45,1476.41],
+    ['BEL','Bélgica','UEFA','G',9,1742.24],['EGY','Egipto','CAF','G',29,1562.37],['IRN','Irán','AFC','G',20,1619.58],['NZL','Nueva Zelanda','OFC','G',85,1275.58],
+    ['ESP','España','UEFA','H',2,1874.71],['URU','Uruguay','CONMEBOL','H',16,1673.07],['KSA','Arabia Saudita','AFC','H',61,1423.88],['CPV','Cabo Verde','CAF','H',67,1371.11],
+    ['FRA','Francia','UEFA','I',3,1870.70],['SEN','Senegal','CAF','I',15,1684.07],['NOR','Noruega','UEFA','I',31,1557.44],['IRQ','Irak','AFC','I',57,1446.28],
+    ['ARG','Argentina','CONMEBOL','J',1,1877.27],['AUT','Austria','UEFA','J',24,1597.40],['ALG','Argelia','CAF','J',28,1571.03],['JOR','Jordania','AFC','J',63,1387.74],
+    ['POR','Portugal','UEFA','K',5,1767.85],['COL','Colombia','CONMEBOL','K',13,1698.35],['UZB','Uzbekistán','AFC','K',50,1458.73],['COD','RD Congo','CAF','K',46,1474.43],
+    ['ENG','Inglaterra','UEFA','L',4,1828.02],['CRO','Croacia','UEFA','L',11,1714.87],['GHA','Ghana','CAF','L',73,1346.88],['PAN','Panamá','CONCACAF','L',34,1539.16]
+  ];
+
+  // deterministic hash → int
+  hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return Math.abs(h); }
+
+  buildTeams(){
+    if(this._teams) return this._teams;
+    const t = this.RAW.map(([code,name,conf,group,fpos,fpts])=>{
+      const h=this.hash(code);
+      const form=(h%81)-40;                 // -40..40
+      const elo=Math.round(1300+(fpts-1275)*1.15);
+      const model=Math.round(fpts+form);
+      const delta=((this.hash(code+'d')%13)-6); // -6..6 rank change
+      return {code,name,conf,group,fpos,fpts,elo,model,delta,color:this.CONF_COLOR[conf]};
+    });
+    // model rank from sorting model rating desc
+    const byModel=[...t].sort((a,b)=>b.model-a.model);
+    byModel.forEach((x,i)=>x.modelRank=i+1);
+    this._teams=t;
+    return t;
+  }
+
+  // ---------- timelines ----------
+  TL = {
+    ARG:[
+      ['Grupo J','JOR','Jordania','AFC',3,0,25,1.75,0.10,5],
+      ['Grupo J','ALG','Argelia','CAF',2,1,25,1.00,-0.06,-3],
+      ['Grupo J','AUT','Austria','UEFA',2,2,25,1.00,-0.22,-8],
+      ['16avos','CUW','Curazao','CONCACAF',4,0,40,2.00,0.05,4],
+      ['Octavos','MEX','México','CONCACAF',3,1,45,1.50,0.12,9],
+      ['Cuartos','ESP','España','UEFA',2,1,50,1.00,0.08,7]
+    ],
+    MAR:[
+      ['Grupo C','HAI','Haití','CONCACAF',2,0,25,1.50,0.06,4],
+      ['Grupo C','SCO','Escocia','UEFA',1,0,25,1.00,0.10,6],
+      ['Grupo C','BRA','Brasil','CONMEBOL',2,1,25,1.00,0.55,22],
+      ['16avos','SUI','Suiza','UEFA',2,2,40,1.00,0.15,9],
+      ['Octavos','POR','Portugal','UEFA',1,0,45,1.00,0.40,18],
+      ['Cuartos','FRA','Francia','UEFA',0,1,50,1.00,-0.10,-6]
+    ],
+    ESP:[
+      ['Grupo H','KSA','Arabia Saudita','AFC',3,0,25,1.75,0.04,3],
+      ['Grupo H','CPV','Cabo Verde','CAF',4,0,25,2.00,0.03,2],
+      ['Grupo H','URU','Uruguay','CONMEBOL',1,1,25,1.00,-0.12,-5],
+      ['16avos','CZE','Chequia','UEFA',2,0,40,1.50,0.05,3],
+      ['Octavos','NED','Países Bajos','UEFA',2,1,45,1.00,0.10,7],
+      ['Cuartos','ARG','Argentina','CONMEBOL',1,2,50,1.00,-0.18,-9]
+    ]
+  };
+  RANKS = { ARG:[1,1,2,2,1,2], MAR:[7,6,4,4,3,3], ESP:[2,2,2,2,1,2] };
+  IMP_BY_PHASE = { 'Grupo':25, '16avos':40, 'Octavos':45, 'Cuartos':50, 'Semifinal':55 };
+
+  seededRand(s){ return (this.hash(s)%10000)/10000; }
+
+  // deterministic plausible match outcome for teams without curated data
+  calcMatch(self,opp,phase,imp){
+    const diff=self.model-opp.model;
+    const we=1/(1+Math.pow(10,-diff/400));
+    const r1=this.seededRand(self.code+opp.code+phase+'r1');
+    const r2=this.seededRand(self.code+opp.code+phase+'r2');
+    const r3=this.seededRand(self.code+opp.code+phase+'r3');
+    const isGroup=phase==='Grupo';
+    const actual = isGroup ? (r1<we-0.15?1:(r1<we+0.15?0.5:0)) : (r1<we?1:0);
+    const surprise=Math.round((actual-we)*100)/100;
+    const goalDiff=Math.round((actual-0.5)*4+(r2-0.5)*2);
+    let gf=Math.max(0,Math.round(1.2+goalDiff/2+(r3-0.5)));
+    let ga=Math.max(0,Math.round(1.2-goalDiff/2+(r2-0.5)));
+    if(actual===1 && gf<=ga) gf=ga+1;
+    if(actual===0 && gf>=ga) ga=gf+1;
+    if(actual===0.5) ga=gf;
+    const gdAbs=Math.abs(gf-ga);
+    const goalFactor= gdAbs>=3?2.00:gdAbs===2?1.75:gdAbs===1?1.50:1.00;
+    const dr=Math.round(imp*surprise*0.8);
+    return {gf,ga,surprise,goalFactor,dr};
+  }
+
+  // group rivals + a knockout run whose depth is tied to model rank — used for the 45 selecciones without curated data
+  buildSyntheticMatches(self,teams){
+    const groupRivals=this.RAW.filter(t=>t[3]===self.group && t[0]!==self.code);
+    const matches=[];
+    groupRivals.forEach(riv=>{
+      const opp=teams.find(t=>t.code===riv[0]);
+      const c=this.calcMatch(self,opp,'Grupo',this.IMP_BY_PHASE.Grupo);
+      matches.push(['Grupo '+self.group,opp.code,opp.name,opp.conf,c.gf,c.ga,this.IMP_BY_PHASE.Grupo,c.goalFactor,c.surprise,c.dr]);
+    });
+    const rank=self.modelRank;
+    const depth = rank<=4?4:rank<=8?3:rank<=16?2:rank<=32?1:0;
+    const phases=['16avos','Octavos','Cuartos','Semifinal'];
+    const used=new Set([self.code,...groupRivals.map(r=>r[0])]);
+    for(let i=0;i<depth;i++){
+      const phase=phases[i];
+      let idx=this.hash(self.code+phase+'opp')%teams.length, tries=0;
+      while(used.has(teams[idx].code) && tries<teams.length){ idx=(idx+1)%teams.length; tries++; }
+      const opp=teams[idx]; used.add(opp.code);
+      const c=this.calcMatch(self,opp,phase,this.IMP_BY_PHASE[phase]);
+      matches.push([phase,opp.code,opp.name,opp.conf,c.gf,c.ga,this.IMP_BY_PHASE[phase],c.goalFactor,c.surprise,c.dr]);
+    }
+    return matches;
+  }
+
+  buildTimeline(code){
+    const teams=this.buildTeams();
+    const self=teams.find(x=>x.code===code);
+    const raw=this.TL[code] || this.buildSyntheticMatches(self,teams);
+    const ranks=this.RANKS[code];
+    let rating=self.fpts, cumDr=0;
+    return raw.map((m,i)=>{
+      const [fase,rc,rn,rconf,gf,ga,imp,goalF,surp,dr]=m;
+      rating=Math.round(rating+dr); cumDr+=dr;
+      const rankAfter = ranks ? ranks[i] : Math.max(1,Math.min(48,Math.round(self.modelRank-cumDr/12)));
+      return {fase,rivalCode:rc,rival:rn,rivalConf:rconf,gf,ga,imp,goalFactor:goalF,surprise:surp,dr,
+        rating,rankAfter,cross:rconf!==self.conf};
+    });
+  }
+
+  // ---------- confederation aggregates ----------
+  CONF_XTRA = {
+    UEFA:{obs:64,exp:59,net:41}, CONMEBOL:{obs:22,exp:20,net:12}, CONCACAF:{obs:11,exp:14,net:-9},
+    CAF:{obs:26,exp:20,net:23}, AFC:{obs:9,exp:15,net:-31}, OFC:{obs:0,exp:1,net:-6}
+  };
+  buildConfs(){
+    const teams=this.buildTeams();
+    return this.CONF_ORDER.map(conf=>{
+      const g=teams.filter(t=>t.conf===conf);
+      const ini=Math.round(g.reduce((s,t)=>s+t.fpts,0)/g.length);
+      const act=Math.round(g.reduce((s,t)=>s+t.model,0)/g.length);
+      const x=this.CONF_XTRA[conf];
+      return {conf,color:this.CONF_COLOR[conf],n:g.length,ini,act,delta:act-ini,...x,oe:x.obs-x.exp};
+    });
+  }
+
+  // ---------- helpers ----------
+  fmtSigned(n,dec){ const v=dec!=null?n.toFixed(dec):n; return (n>0?'+':'')+v; }
+  posStyle(){ return 'color:#1C7A44;font-weight:600'; }
+  negStyle(){ return 'color:#C8202B;font-weight:600'; }
+  zeroStyle(){ return 'color:#6E6A61;font-weight:500'; }
+  signStyle(n){ return n>0?this.posStyle():n<0?this.negStyle():this.zeroStyle(); }
+  dot(conf){ return 'display:inline-block;width:9px;height:9px;border-radius:2px;flex:none;background:'+this.CONF_COLOR[conf]; }
+
+  setView(v){ this.setState({view:v}); }
+  setSort(k){ this.setState(s=>({sortKey:k, sortDir: s.sortKey===k ? (s.sortDir==='asc'?'desc':'asc') : (k==='name'||k==='conf'?'asc':'desc')})); }
+
+  renderVals(){
+    const S=this.state, teams=this.buildTeams();
+
+    // ---- nav ----
+    const views=[['confederaciones','Confederaciones'],['rankings','Rankings'],['equipo','Equipo'],['metodologia','Metodología'],['tokens','Tokens']];
+    const navItems=views.map(([id,label])=>{
+      const on=S.view===id;
+      return { label, current:on?'page':undefined, onClick:()=>this.setView(id),
+        style:'appearance:none;border:0;background:none;padding:16px 24px;font-size:14.5px;font-weight:'+(on?'700':'500')
+          +';color:'+(on?'#F4F1E8':'#9DB3D0')+';border-bottom:4px solid '+(on?'#F2D34E':'transparent')+';margin-bottom:-3px;letter-spacing:0.01em' };
+    });
+
+    const base={ isRankings:S.view==='rankings', isConf:S.view==='confederaciones', isTeam:S.view==='equipo', isMetodologia:S.view==='metodologia', isTokens:S.view==='tokens', navItems,
+      codeStyle:'font-size:11px;color:#6E6A61;font-weight:500' };
+
+    // ================= RANKINGS =================
+    if(S.view==='rankings'){
+      const chipDefs=[['ALL','Todas',null],...this.CONF_ORDER.map(c=>[c,c,c])];
+      const chips=chipDefs.map(([id,label,conf])=>{
+        const on=S.conf===id;
+        return { code:label, pressed:on, onClick:()=>this.setState({conf:id}),
+          dot: conf?('display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle;background:'+this.CONF_COLOR[conf]):'display:none',
+          style:'appearance:none;display:inline-flex;align-items:center;padding:6px 11px;font-size:11.5px;font-weight:'+(on?'700':'500')
+            +';border:1px solid '+(on?'#10294F':'#C7BEAD')+';background:'+(on?'#10294F':'#fff')+';color:'+(on?'#fff':'#4A4740')+';border-radius:2px' };
+      });
+
+      const cols=[['rank','#','Posición del modelo','left'],['name','Selección','Nombre','left'],['conf','Confederación','Confederación','left'],
+        ['fifa','Rank FIFA','Posición en el ranking FIFA','right'],['elo','Elo','Rating Elo derivado','right'],
+        ['model','Rating modelo','Rating del modelo','right'],['delta','Cambio','Cambio de posición','right']];
+      const headers=cols.map(([key,label,title,align])=>{
+        const active=S.sortKey===key;
+        return { label, title, aria: active?(S.sortDir==='asc'?'ascending':'descending'):'none',
+          ind: active?(S.sortDir==='asc'?'▲':'▼'):'',
+          indStyle:'font-size:10px;color:'+(active?'#C8202B':'transparent'),
+          onClick:()=>this.setSort(key),
+          thStyle:'position:sticky;top:0;z-index:1;background:#F1EADB;border-bottom:2px solid #10294F;padding:0;text-align:'+align+';white-space:nowrap',
+          btnStyle:'appearance:none;border:0;background:none;width:100%;padding:9px 12px;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:0.03em;color:#10294F;display:flex;gap:5px;align-items:center;justify-content:'+(align==='right'?'flex-end':'flex-start') };
+      });
+
+      let list=teams.filter(t=>(S.conf==='ALL'||t.conf===S.conf)&&(!S.query||t.name.toLowerCase().includes(S.query.toLowerCase())||t.code.toLowerCase().includes(S.query.toLowerCase())));
+      const dir=S.sortDir==='asc'?1:-1;
+      list=[...list].sort((a,b)=>{
+        let av,bv;
+        switch(S.sortKey){ case'rank':case'model':av=a.model;bv=b.model;break; case'name':av=a.name;bv=b.name;break;
+          case'conf':av=a.conf;bv=b.conf;break; case'fifa':av=-a.fpos;bv=-b.fpos;break; case'elo':av=a.elo;bv=b.elo;break;
+          case'delta':av=a.delta;bv=b.delta;break; default:av=a.model;bv=b.model; }
+        if(typeof av==='string') return av.localeCompare(bv)*dir;
+        return (av-bv)*dir;
+      });
+
+      const tdBase='padding:8px 12px;border-bottom:1px solid #F1ECDE;white-space:nowrap;';
+      const rows=list.map((t,i)=>({
+        rank:t.modelRank, name:t.name, code:t.code, conf:t.conf, fifa:'#'+t.fpos, elo:t.elo, model:t.model,
+        rowStyle:'background:'+(i%2?'#FCFAF4':'#fff'),
+        rankStyle:tdBase+'text-align:left;font-weight:700;color:#10294F;width:44px;font-variant-numeric:tabular-nums',
+        dot:this.dot(t.conf)+';margin-right:7px;vertical-align:middle',
+        deltaStyle:this.signStyle(t.delta)+';font-variant-numeric:tabular-nums',
+        deltaArrow:t.delta>0?'▲':t.delta<0?'▼':'–', deltaLabel:t.delta===0?'0':Math.abs(t.delta)
+      }));
+
+      return {...base, query:S.query, onQuery:e=>this.setState({query:e.target.value}), chips, headers, rows,
+        resultCount:list.length,
+        tdName:tdBase+'text-align:left', tdConf:tdBase+'text-align:left;color:#4A4740',
+        tdNum:tdBase+'text-align:right;font-variant-numeric:tabular-nums',
+        tdModel:tdBase+'text-align:right;font-weight:700;font-variant-numeric:tabular-nums'};
+    }
+
+    // ================= CONFEDERACIONES =================
+    if(S.view==='confederaciones'){
+      const confs=this.buildConfs();
+      const cards=confs.map(c=>({
+        name:c.conf, color:c.color, teamsLabel:c.n+' selecciones',
+        dot:'display:inline-block;width:11px;height:11px;border-radius:2px;background:'+c.color,
+        ini:c.ini, act:c.act,
+        deltaStyle:this.signStyle(c.delta), deltaArrow:c.delta>0?'▲':c.delta<0?'▼':'–', deltaLabel:this.fmtSigned(c.delta),
+        obs:c.obs, exp:c.exp, oe:'('+this.fmtSigned(c.oe)+')', oeStyle:this.signStyle(c.oe),
+        net:Math.abs(c.net), netStyle:this.signStyle(c.net), netArrow:c.net>0?'▲':c.net<0?'▼':'–'
+      }));
+      const maxAbs=Math.max(...confs.map(c=>Math.abs(c.delta)))||1;
+      const bars=[...confs].sort((a,b)=>b.delta-a.delta).map(c=>{
+        const pct=Math.abs(c.delta)/maxAbs*48; // up to 48% each side
+        const barStyle=c.delta>=0
+          ? 'position:absolute;left:50%;top:3px;bottom:3px;width:'+pct+'%;background:'+c.color
+          : 'position:absolute;right:50%;top:3px;bottom:3px;width:'+pct+'%;background:'+c.color;
+        return { code:c.conf, dot:'display:inline-block;width:9px;height:9px;border-radius:2px;background:'+c.color,
+          barStyle, label:this.fmtSigned(c.delta), valStyle:this.signStyle(c.delta) };
+      });
+      return {...base, cards, bars};
+    }
+
+    // ================= EQUIPO =================
+    if(S.view==='equipo'){
+      const teamOptions=this.CONF_ORDER.map(conf=>({
+        label:conf,
+        teams:[...teams].filter(t=>t.conf===conf).sort((a,b)=>a.name.localeCompare(b.name,'es'))
+          .map(t=>({code:t.code, label:t.name+' ('+t.code+')'}))
+      }));
+      const onTeamChange=e=>this.setState({team:e.target.value});
+
+      const self=teams.find(x=>x.code===S.team);
+      const tl=this.buildTimeline(S.team);
+      const last=tl[tl.length-1];
+      const deltaTour=Math.round(last.rating-self.fpts);
+
+      const team={ code:S.team, name:self.name, conf:self.conf, group:self.group, color:self.color,
+        confDot:this.dot(self.conf), ratingNow:last.rating, rankNow:last.rankAfter,
+        deltaTour:Math.abs(deltaTour), deltaTourStyle:this.signStyle(deltaTour), deltaTourArrow:deltaTour>0?'▲':deltaTour<0?'▼':'–',
+        nMatches:tl.length };
+
+      // chart
+      const chartEl=this.buildChart(tl,self);
+
+      const mh=[['Fase','',180,'left'],['Rival','',null,'left'],['Marcador','Goles a favor – en contra',null,'center'],
+        ['Importancia','Ponderación de la fase',null,'right'],['Factor de goles','Multiplicador por margen',null,'right'],
+        ['W−We','Sorpresa: observado − esperado',null,'right'],['Cambio rating','Cambio de rating del partido',null,'right'],
+        ['Rating','Rating tras el partido',null,'right'],['Rank','Posición tras el partido',null,'right']];
+      const matchHeaders=mh.map(([label,title,w,align])=>({label,title,
+        style:'position:sticky;top:0;background:#F1EADB;border-bottom:2px solid '+self.color+';padding:9px 12px;font-size:11px;font-weight:700;letter-spacing:0.02em;color:#10294F;text-align:'+align+';white-space:nowrap'}));
+
+      const mtd='padding:8px 12px;border-bottom:1px solid #F1ECDE;white-space:nowrap;';
+      const matchRows=tl.map((m,i)=>({
+        fase:m.fase, rival:m.rival, rivalCode:m.rivalCode, score:m.gf+'–'+m.ga,
+        imp:m.imp, goalFactor:m.goalFactor.toFixed(2),
+        surprise:this.fmtSigned(m.surprise,2), surpriseStyle:this.signStyle(m.surprise)+';font-variant-numeric:tabular-nums',
+        dr:this.fmtSigned(m.dr), drStyle:this.signStyle(m.dr)+';font-variant-numeric:tabular-nums',
+        rating:m.rating, rankAfter:m.rankAfter,
+        rowStyle:'background:'+(m.cross?'#FBF6E4':(i%2?'#FCFAF4':'#fff')),
+        faseStyle:mtd+'text-align:left;font-weight:600;color:#4A4740'+(m.cross?';box-shadow:inset 3px 0 0 #E0A81E':''),
+        rivalDot:this.dot(m.rivalConf)+';margin-right:7px;vertical-align:middle',
+        crossMark:m.cross?'⇄':'', crossBadge:m.cross?'color:#B4820E;font-weight:700;margin-left:4px':'display:none',
+        scoreStyle:mtd+'text-align:center;font-weight:700;font-variant-numeric:tabular-nums'
+      }));
+
+      return {...base, selectedTeam:S.team, teamOptions, onTeamChange, team, chartEl, matchHeaders, matchRows,
+        mtdRival:mtd+'text-align:left', mtdNum:mtd+'text-align:right;font-variant-numeric:tabular-nums',
+        mtdNumStrong:mtd+'text-align:right;font-weight:700;font-variant-numeric:tabular-nums'};
+    }
+
+    // ================= METODOLOGÍA =================
+    if(S.view==='metodologia'){
+      const methodGroups=[
+        { title:'Rankings y ratings', terms:[
+          {term:'Rank FIFA', def:'Posición oficial de la selección en el ranking FIFA vigente en la fecha de corte de los datos.'},
+          {term:'Elo', def:'Rating Elo estimado a partir de los puntos FIFA, en la escala habitual de este sistema (aprox. 1300–2100).'},
+          {term:'Rating del modelo', def:'Rating propio del modelo, ajustado según el desempeño observado en el torneo. Determina el orden en Rankings.'},
+          {term:'# (rank del modelo)', def:'Posición de la selección al ordenar todas las selecciones por rating del modelo, de mayor a menor.'},
+          {term:'Cambio', def:'Variación de la posición del modelo respecto a la actualización anterior. Verde y ▲ significa que asciende; rojo y ▼, que desciende.'}
+        ]},
+        { title:'Confederaciones', terms:[
+          {term:'Rating promedio · inicial → actual', def:'Promedio del rating de las selecciones de la confederación antes del torneo y en el corte actual.'},
+          {term:'Observado / esperado', def:'Puntos de rating que la confederación ganó o cedió realmente en sus cruces contra otras confederaciones, frente a lo que el modelo esperaba según las probabilidades previas al partido.'},
+          {term:'Transferencia neta', def:'Balance total (puntos ganados menos puntos cedidos) de rating en los cruces de esa confederación con otras.'}
+        ]},
+        { title:'Equipo · línea de tiempo', terms:[
+          {term:'Importancia', def:'Ponderación asignada a la fase del torneo en el cálculo del cambio de rating: la fase de grupos pesa menos que una instancia eliminatoria.'},
+          {term:'Factor de goles', def:'Multiplicador aplicado según el margen de gol del resultado: una goleada pesa más que un triunfo mínimo.'},
+          {term:'Sorpresa (W−We)', def:'Diferencia entre el resultado observado (W: 1 victoria, 0,5 empate, 0 derrota) y el resultado esperado por el modelo antes del partido (We, según la diferencia de rating entre ambos equipos).'},
+          {term:'Cambio de rating', def:'Variación del rating de la selección tras ese partido puntual, resultado de combinar importancia, factor de goles y sorpresa.'},
+          {term:'Cruce entre confederaciones', def:'Partido entre selecciones de distinta confederación. Se resalta porque es el mecanismo que transfiere rating de un bloque continental a otro.'}
+        ]}
+      ];
+      return {...base, methodGroups};
+    }
+
+    // ================= TOKENS =================
+    if(S.view==='tokens'){
+      const tokenConf=this.CONF_ORDER.map(c=>({name:c,hex:this.CONF_COLOR[c]}));
+      const tokenFunc=[
+        {name:'--ink',hex:'#16181D',use:'Texto principal'},
+        {name:'--paper',hex:'#FFFFFF',use:'Fondo de tablas y tarjetas'},
+        {name:'--bg',hex:'#FCFBF7',use:'Fondo de página (papel cálido)'},
+        {name:'--header',hex:'#10294F',use:'Cabecera / azul marino del emblema'},
+        {name:'--accent',hex:'#C8202B',use:'Acento / rojo del emblema'},
+        {name:'--pos',hex:'#1C7A44',use:'Cambio positivo (ascenso)'},
+        {name:'--neg',hex:'#C8202B',use:'Cambio negativo (descenso)'},
+        {name:'--cross',hex:'#E0A81E',use:'Resalte de cruce entre confederaciones'},
+        {name:'--line',hex:'#E4DCC9',use:'Bordes y divisores'},
+        {name:'--muted',hex:'#6E6A61',use:'Texto secundario'}
+      ];
+      const tokenType=[
+        {spec:'700 · 19px',sample:'font-size:19px;font-weight:700;letter-spacing:-0.005em'},
+        {spec:'700 · 15px',sample:'font-size:15px;font-weight:700'},
+        {spec:'600 · 12.5px',sample:'font-size:12.5px;font-weight:600'},
+        {spec:'400 · 12.5px · tablas',sample:'font-size:12.5px;font-weight:400;font-variant-numeric:tabular-nums'},
+        {spec:'500 · 11px · etiqueta',sample:'font-size:11px;font-weight:500;letter-spacing:0.12em;color:#C8202B'},
+        {spec:'300 · 12px · nota',sample:'font-size:12px;font-weight:300;color:#6E6A61'}
+      ];
+      const tokenSpace=[['--space-1',4],['--space-2',8],['--space-3',12],['--space-4',16],['--space-5',24],['--space-6',32],['--space-7',48]]
+        .map(([name,px])=>({name,px:px+'px',bar:'height:12px;background:#10294F;display:inline-block;width:'+px+'px'}));
+      return {...base, tokenConf, tokenFunc, tokenType, tokenSpace};
+    }
+
+    return base;
+  }
+
+  buildChart(tl,self){
+    const pts=[{r:self.fpts,cross:false,label:'Inicial'},...tl.map(m=>({r:m.rating,cross:m.cross,label:m.fase}))];
+    const W=880,H=210,padL=46,padR=16,padT=16,padB=30;
+    const rs=pts.map(p=>p.r);
+    const min=Math.min(...rs)-8, max=Math.max(...rs)+8;
+    const x=i=>padL+(W-padL-padR)*(i/(pts.length-1));
+    const y=r=>padT+(H-padT-padB)*(1-(r-min)/(max-min));
+    const line=pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.r).toFixed(1)).join(' ');
+    const area=line+' L'+x(pts.length-1).toFixed(1)+' '+(H-padB)+' L'+padL+' '+(H-padB)+' Z';
+    const gY=[min,(min+max)/2,max].map(v=>Math.round(v));
+    const E=React.createElement;
+    const kids=[];
+    // gridlines + y labels
+    gY.forEach((v,i)=>{ const yy=y(v);
+      kids.push(E('line',{key:'g'+i,x1:padL,x2:W-padR,y1:yy,y2:yy,stroke:'#EFE8D6',strokeWidth:1}));
+      kids.push(E('text',{key:'gl'+i,x:padL-8,y:yy+3,textAnchor:'end',fontSize:11,fill:'#6E6A61'},v));
+    });
+    kids.push(E('path',{key:'area',d:area,fill:self.color,opacity:0.07}));
+    kids.push(E('path',{key:'line',d:line,fill:'none',stroke:self.color,strokeWidth:2}));
+    pts.forEach((p,i)=>{
+      kids.push(E('circle',{key:'p'+i,cx:x(i),cy:y(p.r),r:p.cross?5:3.5,
+        fill:p.cross?'#FBF3DA':self.color, stroke:p.cross?'#E0A81E':self.color, strokeWidth:p.cross?2:1}));
+      kids.push(E('text',{key:'xl'+i,x:x(i),y:H-padB+16,textAnchor:'middle',fontSize:11,fill:'#6E6A61'},p.label));
+    });
+    return E('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',height:'auto',role:'img',
+      'aria-label':'Evolución del rating de '+self.name+' partido a partido',
+      style:{display:'block',fontFamily:"'IBM Plex Mono', monospace",overflow:'visible'}},kids);
+  }
+}
+</script>
+</body>
+</html>

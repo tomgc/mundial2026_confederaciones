@@ -1,0 +1,40 @@
+# ============================================================================
+# .gitignore - Rama A (proyecto publico, raiz unificada)
+# Los datos (20_insumos/, 40_salidas/) SI se versionan en este proyecto.
+# ============================================================================
+
+# Credenciales
+.env
+.Renviron
+*credentials*
+*secret*
+*token*
+*password*
+
+# Sistema
+.Rproj.user/
+.Rhistory
+.RData
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Nota: *.Rproj SI se versiona (ancla de here::here()). Solo .Rproj.user/ se ignora.
+
+# Snapshots y backups locales
+_archivo/
+*.bak
+
+# Outputs accidentales en raiz y scripts de diagnostico
+/*.docx
+/*.pdf
+/*.html
+# Excepcion: index.html es la entrada del sitio GitHub Pages, SI se versiona
+!/index.html
+/diagnostico_*.md
+/verificar_*.R
+/listar_*.R
+
+# Outputs temporales
+*_freeze/
+.quarto/
