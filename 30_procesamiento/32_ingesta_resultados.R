@@ -3,9 +3,16 @@
 # Proposito: obtener los partidos jugados del Mundial 2026 (fecha, fase,
 #            rivales, marcador) para las 48 selecciones. Fuente primaria:
 #            openfootball/worldcup.json (CC0, mantenido a mano por Gerald
-#            Bauer, sincronizado con ESPN/FIFA; sin API key). Validacion
-#            cruzada: thestatsapi.com/fixtures.csv (calendario, sin marcador,
-#            solo para detectar partidos faltantes o mal mapeados). Fallback
+#            Bauer, sincronizado con ESPN/FIFA; sin API key). Toma el
+#            marcador de la instancia que realmente resolvio el partido
+#            (ft, o et/p si ft quedo en empate; ver P19). Validacion
+#            cruzada doble, siempre activa (no solo si la primaria falla):
+#            (1) thestatsapi.com/fixtures.csv, calendario sin marcador,
+#            solo detecta partidos faltantes o mal mapeados; (2) ESPN
+#            (site.api.espn.com, API no oficial sin ToS publico), aporta
+#            marcador real independiente, incluido resultado explicito de
+#            tiempo extra/penales (shootoutScore); discrepancias con la
+#            primaria generan WARN, nunca bloquean el pipeline. Fallback
 #            de ultima instancia: dataset CC0 de GitHub (matches_detailed.csv,
 #            mominullptr/FIFA-World-Cup-2026-Dataset) — advertencia explicita
 #            si se usa: puede contener datos sinteticos, no reales.
@@ -13,7 +20,8 @@
 #            completa en cada corrida, no acumula duplicados).
 # Insumos:   20_insumos/equipos_mundial2026.csv (maestro, para mapear codigos)
 #            + openfootball/worldcup.json (GitHub raw, primaria)
-#            + thestatsapi.com/fixtures.csv (validacion cruzada, opcional)
+#            + thestatsapi.com/fixtures.csv (validacion cruzada, calendario)
+#            + site.api.espn.com (validacion cruzada, marcador real)
 #            + GitHub raw CC0 (fallback de ultima instancia)
 # Salidas:   40_salidas/resultados_partidos.csv (escritura atomica)
 # Autor:     [tu nombre]
@@ -45,9 +53,17 @@ ARCHIVO_SALIDA  <- ruta_salidas("resultados_partidos.csv")
 # Fuente primaria: real, mantenida a mano, sincronizada con ESPN/FIFA.
 URL_OPENFOOTBALL <- "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json"
 
-# Validacion cruzada: calendario real independiente (sin marcador gratis;
+# Validacion cruzada 1: calendario real independiente (sin marcador gratis;
 # solo confirma que el partido existe, fecha y equipos, no el resultado).
 URL_THESTATSAPI <- "https://www.thestatsapi.com/world-cup/data/fixtures.csv"
+
+# Validacion cruzada 2: marcador real independiente. API no oficial de ESPN
+# (sin ToS publico, uso ampliamente reutilizado por la comunidad; puede
+# cambiar de forma o bloquearse sin aviso, se trata igual que thestatsapi:
+# validacion que nunca bloquea el pipeline si falla). Aporta ademas
+# resolucion explicita de tiempo extra/penales via shootoutScore, util
+# para contrastar el marcador final de openfootball en esos casos.
+URL_ESPN_BASE <- "http://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
 
 # Fallback de ultima instancia si openfootball falla. ADVERTENCIA: este
 # dataset puede contener resultados sinteticos/ficticios (confirmado en
@@ -106,21 +122,46 @@ normalizar_fase <- function(x) {
 }
 
 # ---- Fuente primaria: openfootball/worldcup.json ----
+# P19: score es un data.frame con columnas ft/ht/et/p, cada una lista de
+# vectores length-2 o NULL. Cuando el partido se define en tiempo extra o
+# penales, ft SIGUE existiendo pero queda en empate (el resultado real esta
+# en et o p). Bug detectado 2026-07-05: el parser anterior solo leia ft,
+# registrando como empate partidos que en realidad tuvieron ganador (ver
+# 50_documentacion/activa/decisiones/20260705_investigacion_fuentes_resultados.md).
+# Regla de resolucion: usar la ultima instancia jugada (p > et > ft), nunca
+# promediar ni descartar. resuelto_por queda en la salida para trazabilidad.
 intentar_openfootball <- function() {
   tryCatch({
     raw <- jsonlite::fromJSON(URL_OPENFOOTBALL, simplifyDataFrame = TRUE)
     partidos_raw <- raw$matches
     if (is.null(partidos_raw) || nrow(partidos_raw) == 0) stop("worldcup.json sin partidos")
 
-    # score es un data.frame (columnas ft/ht/p/et), cada una lista-de-vectores
-    # length-2 o NULL si el partido no se ha jugado (bracket con placeholders
-    # tipo "1A", "W74", etc.). Confirmado empiricamente: score$ft es
-    # List of N con elementos int[1:2] o NULL, no una matriz simplificada.
-    ft_list <- partidos_raw$score$ft
-    tiene_score <- vapply(ft_list, function(x) !is.null(x) && length(x) == 2 && !anyNA(x), logical(1))
+    extraer_marcador <- function(lista_col) {
+      # Devuelve matriz N x 2 (NA si no existe/incompleto) para una columna
+      # score$ft / score$et / score$p, sea NULL, list-de-NULL o ausente.
+      if (is.null(lista_col)) return(matrix(NA_integer_, nrow(partidos_raw), 2))
+      m <- t(vapply(lista_col, function(x) {
+        if (is.null(x) || length(x) != 2 || anyNA(x)) c(NA_integer_, NA_integer_) else as.integer(x)
+      }, integer(2)))
+      m
+    }
+
+    m_ft <- extraer_marcador(partidos_raw$score$ft)
+    m_et <- extraer_marcador(partidos_raw$score$et)
+    m_p  <- extraer_marcador(partidos_raw$score$p)
+
+    tiene_ft <- !is.na(m_ft[, 1])
+    tiene_et <- !is.na(m_et[, 1])
+    tiene_p  <- !is.na(m_p[, 1])
+    tiene_score <- tiene_ft | tiene_et | tiene_p
     if (!any(tiene_score)) stop("worldcup.json: ningun partido con marcador aun")
 
-    ft <- do.call(rbind, ft_list[tiene_score])
+    # Prioridad p > et > ft: la instancia mas tardia jugada es la que
+    # resolvio el partido. ft se usa como base y se sobrescribe si hay et/p.
+    gf_local  <- ifelse(tiene_p, m_p[, 1], ifelse(tiene_et, m_et[, 1], m_ft[, 1]))
+    gf_visita <- ifelse(tiene_p, m_p[, 2], ifelse(tiene_et, m_et[, 2], m_ft[, 2]))
+    resuelto_por <- ifelse(tiene_p, "p", ifelse(tiene_et, "et", "ft"))
+
     jugados <- partidos_raw[tiene_score, ]
 
     tibble::tibble(
@@ -128,8 +169,9 @@ intentar_openfootball <- function() {
       fase          = normalizar_fase(jugados$round),
       local_nombre  = as.character(jugados$team1),
       visita_nombre = as.character(jugados$team2),
-      gf_local      = as.integer(ft[, 1]),
-      gf_visita     = as.integer(ft[, 2]),
+      gf_local      = as.integer(gf_local[tiene_score]),
+      gf_visita     = as.integer(gf_visita[tiene_score]),
+      resuelto_por  = resuelto_por[tiene_score],
       sede          = as.character(jugados$ground %||% NA_character_)
     )
   }, error = function(e) {
@@ -165,6 +207,68 @@ validar_contra_thestatsapi <- function(partidos_openfootball) {
     }
   }, error = function(e) {
     log_msg(paste("Validacion cruzada thestatsapi fallo (no bloquea):", conditionMessage(e)),
+            "WARN", "32_resultados")
+  })
+  invisible(NULL)
+}
+
+# ---- Validacion cruzada 2: ESPN (marcador real, siempre activa) ----
+# A diferencia de thestatsapi, ESPN si aporta marcador; se usa para
+# contrastar el gf/gc que openfootball ya resolvio (incluido et/p), no
+# para reemplazarlo. Discrepancias generan WARN detallado, nunca bloquean
+# (misma politica que thestatsapi: fuente no oficial, sin ToS publico).
+validar_contra_espn <- function(partidos_openfootball) {
+  tryCatch({
+    fechas <- unique(partidos_openfootball$fecha)
+    fechas_espn <- gsub("-", "", fechas)
+    resultados_espn <- purrr::map2_dfr(fechas, fechas_espn, function(fecha_iso, fecha_espn) {
+      url <- paste0(URL_ESPN_BASE, "?dates=", fecha_espn)
+      resp <- tryCatch(jsonlite::fromJSON(url, simplifyDataFrame = TRUE), error = function(e) NULL)
+      if (is.null(resp) || is.null(resp$events) || length(resp$events) == 0) return(tibble::tibble())
+      eventos <- resp$events
+      purrr::map_dfr(seq_len(nrow(eventos)), function(i) {
+        competidores <- eventos$competitions[[i]]$competitors[[1]]
+        if (is.null(competidores) || nrow(competidores) != 2) return(tibble::tibble())
+        local_idx <- which(competidores$homeAway == "home")
+        visita_idx <- which(competidores$homeAway == "away")
+        if (length(local_idx) != 1 || length(visita_idx) != 1) return(tibble::tibble())
+        tibble::tibble(
+          fecha = fecha_iso,
+          local_nombre = competidores$team$displayName[local_idx],
+          visita_nombre = competidores$team$displayName[visita_idx],
+          gf_local_espn = suppressWarnings(as.integer(competidores$score[local_idx])),
+          gf_visita_espn = suppressWarnings(as.integer(competidores$score[visita_idx]))
+        )
+      })
+    })
+    if (nrow(resultados_espn) == 0) {
+      log_msg("Validacion cruzada ESPN: sin eventos para las fechas consultadas (no bloquea).",
+              "WARN", "32_resultados")
+      return(invisible(NULL))
+    }
+    resultados_espn <- resultados_espn |>
+      dplyr::mutate(codigo_local = mapear_codigo(local_nombre), codigo_visita = mapear_codigo(visita_nombre)) |>
+      dplyr::filter(!is.na(codigo_local), !is.na(codigo_visita))
+    comparacion <- partidos_openfootball |>
+      dplyr::mutate(codigo_local = mapear_codigo(local_nombre), codigo_visita = mapear_codigo(visita_nombre)) |>
+      dplyr::inner_join(resultados_espn, by = c("fecha", "codigo_local", "codigo_visita"))
+    discrepancias <- comparacion |>
+      dplyr::filter(gf_local != gf_local_espn | gf_visita != gf_visita_espn)
+    if (nrow(discrepancias) > 0) {
+      log_msg(sprintf(
+        "Validacion cruzada ESPN: %d partido(s) con marcador distinto entre openfootball y ESPN (revisar manualmente, no bloquea): %s.",
+        nrow(discrepancias),
+        paste(sprintf("%s %d-%d (of) vs %d-%d (espn)", discrepancias$codigo_local,
+                       discrepancias$gf_local, discrepancias$gf_visita,
+                       discrepancias$gf_local_espn, discrepancias$gf_visita_espn),
+              collapse = "; ")),
+        "WARN", "32_resultados")
+    } else if (nrow(comparacion) > 0) {
+      log_msg(sprintf("Validacion cruzada ESPN: marcador coincide en los %d partido(s) contrastados.",
+                      nrow(comparacion)), "INFO", "32_resultados")
+    }
+  }, error = function(e) {
+    log_msg(paste("Validacion cruzada ESPN fallo (no bloquea):", conditionMessage(e)),
             "WARN", "32_resultados")
   })
   invisible(NULL)
@@ -245,6 +349,7 @@ if (is.null(partidos_raw)) {
   fuente_usada <- "fallback_cc0_sintetico"
 } else {
   validar_contra_thestatsapi(partidos_raw)
+  validar_contra_espn(partidos_raw)
 }
 
 if (is.null(partidos_raw) || nrow(partidos_raw) == 0) {
@@ -262,7 +367,8 @@ partidos <- partidos_raw |>
   dplyr::mutate(id_partido = dplyr::row_number()) |>
   dplyr::select(id_partido, fecha, fase, sede,
                 local_codigo, local_nombre, gf_local,
-                visita_codigo, visita_nombre, gf_visita)
+                visita_codigo, visita_nombre, gf_visita,
+                resuelto_por = dplyr::any_of("resuelto_por"))
 
 # ---- Validacion de integridad (politica C.8) ----
 if (nrow(partidos) == 0) {
@@ -284,6 +390,7 @@ if (fuente_usada == "fallback_cc0_sintetico") {
 
 # ---- Escritura atomica ----
 escribir_csv_atomico(partidos, ARCHIVO_SALIDA)
-log_msg(sprintf("Resultados escritos: %s (%d partidos, fuente = %s)",
-                ARCHIVO_SALIDA, nrow(partidos), fuente_usada),
+n_et_p <- if ("resuelto_por" %in% names(partidos)) sum(partidos$resuelto_por %in% c("et", "p"), na.rm = TRUE) else 0L
+log_msg(sprintf("Resultados escritos: %s (%d partidos, fuente = %s, %d resueltos en et/p)",
+                ARCHIVO_SALIDA, nrow(partidos), fuente_usada, n_et_p),
         "INFO", "32_resultados")
