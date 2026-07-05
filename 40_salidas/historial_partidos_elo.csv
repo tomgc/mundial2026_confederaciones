@@ -165,3 +165,5 @@ PAR,FRA,octavos,0,1,D,-0.052
 FRA,PAR,octavos,1,0,V,0.052
 CAN,MAR,octavos,0,3,D,-1.304
 MAR,CAN,octavos,3,0,V,1.304
+BRA,NOR,octavos,1,2,D,-4.854
+NOR,BRA,octavos,2,1,V,4.854
