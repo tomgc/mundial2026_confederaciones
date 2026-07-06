@@ -167,3 +167,5 @@ CAN,MAR,octavos,0,3,D,-0.495
 MAR,CAN,octavos,3,0,V,0.495
 BRA,NOR,octavos,1,2,D,-5.669
 NOR,BRA,octavos,2,1,V,5.669
+MEX,ENG,octavos,2,3,D,-0.643
+ENG,MEX,octavos,3,2,V,0.643
