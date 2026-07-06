@@ -91,3 +91,4 @@ id_partido,fecha,fase,sede,local_codigo,local_nombre,gf_local,visita_codigo,visi
 90,2026-07-04,octavos,Houston,CAN,Canada,0,MAR,Morocco,3,ft
 91,2026-07-05,octavos,New York/New Jersey (East Rutherford),BRA,Brazil,1,NOR,Norway,2,ft
 92,2026-07-05,octavos,Mexico City,MEX,Mexico,2,ENG,England,3,ft
+93,2026-07-06,octavos,Dallas (Arlington),POR,Portugal,0,ESP,Spain,1,ft
