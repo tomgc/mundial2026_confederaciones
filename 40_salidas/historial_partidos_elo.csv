@@ -173,3 +173,5 @@ USA,BEL,octavos,1,4,D,-2.508
 BEL,USA,octavos,4,1,V,2.508
 ARG,EGY,octavos,3,2,V,0.016
 EGY,ARG,octavos,2,3,D,-0.016
+SUI,COL,octavos,4,3,V,4.814
+COL,SUI,octavos,3,4,D,-4.814
