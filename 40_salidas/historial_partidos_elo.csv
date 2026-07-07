@@ -169,3 +169,5 @@ BRA,NOR,octavos,1,2,D,-4.854
 NOR,BRA,octavos,2,1,V,4.854
 MEX,ENG,octavos,2,3,D,-1.144
 ENG,MEX,octavos,3,2,V,1.144
+USA,BEL,octavos,1,4,D,-2.508
+BEL,USA,octavos,4,1,V,2.508
