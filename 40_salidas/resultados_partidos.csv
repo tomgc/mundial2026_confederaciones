@@ -95,3 +95,11 @@ id_partido,fecha,fase,sede,local_codigo,local_nombre,gf_local,visita_codigo,visi
 94,2026-07-06,octavos,Seattle,USA,USA,1,BEL,Belgium,4,ft
 95,2026-07-07,octavos,Atlanta,ARG,Argentina,3,EGY,Egypt,2,ft
 96,2026-07-07,octavos,Vancouver,SUI,Switzerland,4,COL,Colombia,3,p
+97,2026-07-09,cuartos,Boston (Foxborough),FRA,France,2,MAR,Morocco,0,ft
+98,2026-07-10,cuartos,Los Angeles (Inglewood),ESP,Spain,2,BEL,Belgium,1,ft
+99,2026-07-11,cuartos,Miami (Miami Gardens),NOR,Norway,1,ENG,England,2,et
+100,2026-07-11,cuartos,Kansas City,ARG,Argentina,3,SUI,Switzerland,1,et
+101,2026-07-14,semifinal,Dallas (Arlington),FRA,France,0,ESP,Spain,2,ft
+102,2026-07-15,semifinal,Atlanta,ENG,England,1,ARG,Argentina,2,ft
+103,2026-07-18,tercer_lugar,Miami (Miami Gardens),FRA,France,4,ENG,England,6,ft
+104,2026-07-19,final,New York/New Jersey (East Rutherford),ESP,Spain,1,ARG,Argentina,0,espn_puente_et

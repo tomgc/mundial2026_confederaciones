@@ -12,7 +12,14 @@
 #            (site.api.espn.com, API no oficial sin ToS publico), aporta
 #            marcador real independiente, incluido resultado explicito de
 #            tiempo extra/penales (shootoutScore); discrepancias con la
-#            primaria generan WARN, nunca bloquean el pipeline. Fallback
+#            primaria generan WARN, nunca bloquean el pipeline.
+#            P21 (regla puente, 2026-07-19): cuando un partido del
+#            calendario de openfootball aun no tiene score publicado (visto
+#            en la final del torneo: ESPN publico el resultado antes que
+#            openfootball), se completa ESE partido puntual usando ESPN,
+#            marcado resuelto_por="espn_puente". openfootball sigue siendo
+#            la fuente primaria: la regla puente NUNCA sobrescribe un
+#            partido que openfootball ya resolvio, solo llena huecos. Fallback
 #            de ultima instancia: dataset CC0 de GitHub (matches_detailed.csv,
 #            mominullptr/FIFA-World-Cup-2026-Dataset) — advertencia explicita
 #            si se usa: puede contener datos sinteticos, no reales.
@@ -21,7 +28,8 @@
 # Insumos:   20_insumos/equipos_mundial2026.csv (maestro, para mapear codigos)
 #            + openfootball/worldcup.json (GitHub raw, primaria)
 #            + thestatsapi.com/fixtures.csv (validacion cruzada, calendario)
-#            + site.api.espn.com (validacion cruzada, marcador real)
+#            + site.api.espn.com (validacion cruzada de marcador + puente
+#              para partidos sin score en la primaria, P21)
 #            + GitHub raw CC0 (fallback de ultima instancia)
 # Salidas:   40_salidas/resultados_partidos.csv (escritura atomica)
 # Autor:     [tu nombre]
@@ -130,6 +138,10 @@ normalizar_fase <- function(x) {
 # 50_documentacion/activa/decisiones/20260705_investigacion_fuentes_resultados.md).
 # Regla de resolucion: usar la ultima instancia jugada (p > et > ft), nunca
 # promediar ni descartar. resuelto_por queda en la salida para trazabilidad.
+# P21 (regla puente ESPN): retorna list(jugados, pendientes) en vez de solo
+# jugados, para que el flujo principal sepa que partidos del calendario aun
+# no tienen score en la fuente primaria y pueda intentar completarlos via
+# ESPN (intentar_espn_puente()) sin tocar la primaria como tal.
 intentar_openfootball <- function() {
   tryCatch({
     raw <- jsonlite::fromJSON(URL_OPENFOOTBALL, simplifyDataFrame = TRUE)
@@ -163,8 +175,9 @@ intentar_openfootball <- function() {
     resuelto_por <- ifelse(tiene_p, "p", ifelse(tiene_et, "et", "ft"))
 
     jugados <- partidos_raw[tiene_score, ]
+    pendientes <- partidos_raw[!tiene_score, ]
 
-    tibble::tibble(
+    lista_jugados <- tibble::tibble(
       fecha         = as.character(jugados$date),
       fase          = normalizar_fase(jugados$round),
       local_nombre  = as.character(jugados$team1),
@@ -174,6 +187,22 @@ intentar_openfootball <- function() {
       resuelto_por  = resuelto_por[tiene_score],
       sede          = as.character(jugados$ground %||% NA_character_)
     )
+
+    lista_pendientes <- if (nrow(pendientes) > 0) {
+      tibble::tibble(
+        fecha         = as.character(pendientes$date),
+        fase          = normalizar_fase(pendientes$round),
+        local_nombre  = as.character(pendientes$team1),
+        visita_nombre = as.character(pendientes$team2),
+        sede          = as.character(pendientes$ground %||% NA_character_)
+      )
+    } else {
+      tibble::tibble(fecha = character(), fase = character(),
+                      local_nombre = character(), visita_nombre = character(),
+                      sede = character())
+    }
+
+    list(jugados = lista_jugados, pendientes = lista_pendientes)
   }, error = function(e) {
     log_msg(paste("Fuente openfootball fallo:", conditionMessage(e)), "WARN", "32_resultados")
     NULL
@@ -274,6 +303,95 @@ validar_contra_espn <- function(partidos_openfootball) {
   invisible(NULL)
 }
 
+# ---- Regla puente ESPN (P21): completa partidos sin score en la primaria ----
+# Se ejecuta SOLO sobre los partidos que openfootball aun no resolvio
+# (pendientes). Para cada uno, consulta ESPN por fecha y busca el evento
+# correspondiente por equipos; si ESPN ya lo dio por terminado (cualquier
+# variante: tiempo reglamentario, extra o penales), extrae el marcador y lo
+# retorna con resuelto_por="espn_puente". Si ESPN tampoco lo tiene resuelto,
+# el partido simplemente queda pendiente (no se inventa nada, se omite).
+# openfootball sigue siendo la fuente primaria: esta funcion nunca toca
+# partidos que openfootball ya resolvio.
+intentar_espn_puente <- function(pendientes) {
+  if (nrow(pendientes) == 0) return(tibble::tibble())
+  tryCatch({
+    fechas <- unique(pendientes$fecha)
+    fechas_espn <- gsub("-", "", fechas)
+    resultados_espn <- purrr::map2_dfr(fechas, fechas_espn, function(fecha_iso, fecha_espn) {
+      url <- paste0(URL_ESPN_BASE, "?dates=", fecha_espn)
+      resp <- tryCatch(jsonlite::fromJSON(url, simplifyDataFrame = TRUE), error = function(e) NULL)
+      if (is.null(resp) || is.null(resp$events) || length(resp$events) == 0) return(tibble::tibble())
+      eventos <- resp$events
+      purrr::map_dfr(seq_len(nrow(eventos)), function(i) {
+        # ESPN describe el estado en status.type.description ("Final Score",
+        # "Final Score - After Extra Time", "Scheduled", "In Progress", etc.).
+        # Un partido cuenta como resuelto solo si esa descripcion empieza con
+        # "final" (case-insensitive); no se asume la existencia de un campo
+        # booleano "completed" sin haberlo confirmado en la respuesta real.
+        desc_estado <- tryCatch(eventos$status$type$description[i], error = function(e) NA_character_)
+        if (is.na(desc_estado) || !stringr::str_detect(stringr::str_to_lower(desc_estado), "^final")) {
+          return(tibble::tibble())
+        }
+        competidores <- eventos$competitions[[i]]$competitors[[1]]
+        if (is.null(competidores) || nrow(competidores) != 2) return(tibble::tibble())
+        local_idx <- which(competidores$homeAway == "home")
+        visita_idx <- which(competidores$homeAway == "away")
+        if (length(local_idx) != 1 || length(visita_idx) != 1) return(tibble::tibble())
+        tiene_penales <- "shootoutScore" %in% names(competidores) &&
+          !is.na(competidores$shootoutScore[local_idx]) &&
+          !is.na(competidores$shootoutScore[visita_idx])
+        gf_l <- suppressWarnings(as.integer(competidores$score[local_idx]))
+        gf_v <- suppressWarnings(as.integer(competidores$score[visita_idx]))
+        resuelto_por_espn <- "ft"
+        if (tiene_penales) {
+          gf_l <- as.integer(competidores$shootoutScore[local_idx])
+          gf_v <- as.integer(competidores$shootoutScore[visita_idx])
+          resuelto_por_espn <- "p"
+        } else if (stringr::str_detect(stringr::str_to_lower(desc_estado), "extra time")) {
+          resuelto_por_espn <- "et"
+        }
+        tibble::tibble(
+          fecha = fecha_iso,
+          local_nombre = competidores$team$displayName[local_idx],
+          visita_nombre = competidores$team$displayName[visita_idx],
+          gf_local = gf_l, gf_visita = gf_v,
+          resuelto_por_espn = resuelto_por_espn
+        )
+      })
+    })
+    if (nrow(resultados_espn) == 0) return(tibble::tibble())
+
+    # Empareja por codigo_fifa (no texto), igual que las demas validaciones.
+    pendientes_cod <- pendientes |>
+      dplyr::mutate(codigo_local = mapear_codigo(local_nombre), codigo_visita = mapear_codigo(visita_nombre))
+    espn_cod <- resultados_espn |>
+      dplyr::mutate(codigo_local = mapear_codigo(local_nombre), codigo_visita = mapear_codigo(visita_nombre)) |>
+      dplyr::filter(!is.na(codigo_local), !is.na(codigo_visita))
+
+    completados <- pendientes_cod |>
+      dplyr::inner_join(
+        espn_cod |> dplyr::select(fecha, codigo_local, codigo_visita, gf_local, gf_visita, resuelto_por_espn),
+        by = c("fecha", "codigo_local", "codigo_visita")
+      ) |>
+      dplyr::mutate(resuelto_por = paste0("espn_puente_", resuelto_por_espn)) |>
+      dplyr::select(fecha, fase, local_nombre, visita_nombre, gf_local, gf_visita, resuelto_por, sede)
+
+    if (nrow(completados) > 0) {
+      log_msg(sprintf(
+        "Regla puente ESPN: %d partido(s) completados que openfootball aun no resolvia: %s.",
+        nrow(completados),
+        paste(sprintf("%s vs %s (%d-%d)", completados$local_nombre, completados$visita_nombre,
+                       completados$gf_local, completados$gf_visita), collapse = "; ")),
+        "WARN", "32_resultados")
+    }
+    completados
+  }, error = function(e) {
+    log_msg(paste("Regla puente ESPN fallo (no bloquea, partidos quedan pendientes):", conditionMessage(e)),
+            "WARN", "32_resultados")
+    tibble::tibble()
+  })
+}
+
 # ---- Fuente de ultima instancia: dataset CC0 (posible sintetico) ----
 intentar_fallback <- function() {
   tryCatch({
@@ -340,16 +458,21 @@ maestro <- readr::read_csv(ARCHIVO_MAESTRO, col_types = readr::cols(.default = r
   janitor::clean_names() |>
   dplyr::mutate(clave_en = clave_nombre(equipo_en), clave_es = clave_nombre(equipo_es))
 
-partidos_raw <- intentar_openfootball()
+resultado_of <- intentar_openfootball()
 fuente_usada <- "openfootball"
-if (is.null(partidos_raw)) {
+if (is.null(resultado_of)) {
   log_msg("Fallback activado: usando dataset CC0 de respaldo. ADVERTENCIA: puede contener datos sinteticos, no reales.",
           "WARN", "32_resultados")
   partidos_raw <- intentar_fallback()
   fuente_usada <- "fallback_cc0_sintetico"
 } else {
-  validar_contra_thestatsapi(partidos_raw)
-  validar_contra_espn(partidos_raw)
+  jugados_of <- resultado_of$jugados
+  pendientes_of <- resultado_of$pendientes
+  validar_contra_thestatsapi(jugados_of)
+  validar_contra_espn(jugados_of)
+
+  puente <- intentar_espn_puente(pendientes_of)
+  partidos_raw <- dplyr::bind_rows(jugados_of, puente)
 }
 
 if (is.null(partidos_raw) || nrow(partidos_raw) == 0) {
@@ -391,6 +514,7 @@ if (fuente_usada == "fallback_cc0_sintetico") {
 # ---- Escritura atomica ----
 escribir_csv_atomico(partidos, ARCHIVO_SALIDA)
 n_et_p <- if ("resuelto_por" %in% names(partidos)) sum(partidos$resuelto_por %in% c("et", "p"), na.rm = TRUE) else 0L
-log_msg(sprintf("Resultados escritos: %s (%d partidos, fuente = %s, %d resueltos en et/p)",
-                ARCHIVO_SALIDA, nrow(partidos), fuente_usada, n_et_p),
+n_puente <- if ("resuelto_por" %in% names(partidos)) sum(stringr::str_detect(partidos$resuelto_por %||% "", "^espn_puente"), na.rm = TRUE) else 0L
+log_msg(sprintf("Resultados escritos: %s (%d partidos, fuente = %s, %d resueltos en et/p, %d via puente ESPN)",
+                ARCHIVO_SALIDA, nrow(partidos), fuente_usada, n_et_p, n_puente),
         "INFO", "32_resultados")
